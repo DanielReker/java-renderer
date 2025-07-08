@@ -12,7 +12,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
 
@@ -26,8 +25,11 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
     private final Map<String, Object> uniformValues = new HashMap<>();
 
+    private final Map<String, Field> vertexShaderAttributeInputFields = new HashMap<>();
+    private final Map<String, Field> vertexShaderUniformInputFields = new HashMap<>();
     private final Map<String, Field> vertexShaderVaryingOutputFields = new HashMap<>();
     private final Map<String, Field> fragmentShaderVaryingInputFields = new HashMap<>();
+    private final Map<String, Field> fragmentShaderUniformInputFields = new HashMap<>();
 
 
     @SuppressWarnings("unchecked")
@@ -49,10 +51,10 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
             throw new IllegalArgumentException("Shader I/O classes must have a no-arg constructor.", e);
         }
 
-        cacheVaryingFields();
+        cacheFields();
     }
 
-    private void cacheVaryingFields() {
+    private void cacheFields() {
         Arrays.stream(vertexIoClass.getDeclaredFields())
                 .filter(f -> f.isAnnotationPresent(Varying.class))
                 .forEach(field -> {
@@ -72,6 +74,27 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
                                 vertexIoClass.getSimpleName());
                     }
                 });
+
+        Arrays.stream(fragmentIoClass.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(Uniform.class))
+                .forEach(field -> {
+                    field.setAccessible(true);
+                    fragmentShaderUniformInputFields.put(field.getName(), field);
+                });
+
+        Arrays.stream(vertexIoClass.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(Uniform.class))
+                .forEach(field -> {
+                    field.setAccessible(true);
+                    vertexShaderUniformInputFields.put(field.getName(), field);
+                });
+
+        Arrays.stream(vertexIoClass.getDeclaredFields())
+                .filter(f -> f.isAnnotationPresent(Attribute.class))
+                .forEach(field -> {
+                    field.setAccessible(true);
+                    vertexShaderAttributeInputFields.put(field.getName(), field);
+                });
     }
 
 
@@ -89,7 +112,7 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
         try {
             V_IO vsIo = vertexIoConstructor.newInstance();
 
-            populateFields(vsIo, vertexIoClass, field -> field.isAnnotationPresent(Attribute.class),
+            populateFields(vsIo, vertexShaderAttributeInputFields.values(),
                     field -> {
                         try {
                             Field sourceField = vertexObject.getClass().getDeclaredField(field.getName());
@@ -107,7 +130,7 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
                         }
                     });
 
-            populateFields(vsIo, vertexIoClass, field -> field.isAnnotationPresent(Uniform.class),
+            populateFields(vsIo, vertexShaderUniformInputFields.values(),
                     field -> uniformValues.get(field.getName()));
 
             return vsIo;
@@ -121,10 +144,10 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
         try {
             F_IO fsIo = fragmentIoConstructor.newInstance();
 
-            populateFields(fsIo, fragmentIoClass, field -> field.isAnnotationPresent(Varying.class),
+            populateFields(fsIo, fragmentShaderVaryingInputFields.values(),
                     field -> interpolatedVaryings.get(field.getName()));
 
-            populateFields(fsIo, fragmentIoClass, field -> field.isAnnotationPresent(Uniform.class),
+            populateFields(fsIo, fragmentShaderUniformInputFields.values(),
                     field -> uniformValues.get(field.getName()));
 
 
@@ -139,13 +162,10 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
     private void populateFields(
             Object ioInstance,
-            Class<?> ioClass,
-            Predicate<Field> fieldPredicate,
+            Collection<Field> fields,
             Function<Field, Object> getFieldValue
     ) {
-        Arrays.stream(ioClass.getDeclaredFields())
-                .filter(fieldPredicate)
-                .forEach(field -> {
+                fields.forEach(field -> {
                     field.setAccessible(true);
                     Object value = getFieldValue.apply(field);
                     if (value != null) {
