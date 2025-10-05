@@ -26,9 +26,9 @@ public class CubeDemo {
     private static volatile boolean running = true;
 
     private static final Camera camera = new Camera(new Vector3f(0.0f, 0.0f, 3.0f));
-    private static float lastMouseX = FRAME_WIDTH / 2.0f;
-    private static float lastMouseY = FRAME_HEIGHT / 2.0f;
     private static boolean firstMouse = true;
+
+    private static Robot robot;
 
     private static float deltaTime = 0.0f;
     private static long lastFrameTime = System.nanoTime();
@@ -93,7 +93,7 @@ public class CubeDemo {
     private static final boolean[] keyStates = new boolean[256];
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws AWTException {
         JFrame frame = new JFrame("Java Renderer - Cube Demo");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setIgnoreRepaint(true);
@@ -118,6 +118,7 @@ public class CubeDemo {
         Cursor blankCursor = toolkit.createCustomCursor(image, new Point(0, 0), "blank_cursor");
         frame.setCursor(blankCursor);
 
+        robot = new Robot();
 
         canvas.addKeyListener(new KeyAdapter() {
             @Override
@@ -133,17 +134,27 @@ public class CubeDemo {
 
         canvas.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
-            public void mouseMoved(MouseEvent e) {
+            public void mouseMoved(MouseEvent event) {
                 if (firstMouse) {
-                    lastMouseX = e.getX();
-                    lastMouseY = e.getY();
                     firstMouse = false;
+                    return;
                 }
-                float xoffset = e.getX() - lastMouseX;
-                float yoffset = lastMouseY - e.getY();
-                lastMouseX = e.getX();
-                lastMouseY = e.getY();
-                camera.processMouseMovement(xoffset, yoffset, true);
+
+                final Point canvasCenterOnScreen = canvas.getLocationOnScreen();
+                int centerX = canvasCenterOnScreen.x + canvas.getWidth() / 2;
+                int centerY = canvasCenterOnScreen.y + canvas.getHeight() / 2;
+
+                float xOffset = event.getXOnScreen() - centerX;
+                float yOffset = centerY - event.getYOnScreen();
+
+                if (Math.abs(xOffset) > canvas.getWidth() / 2.0f || Math.abs(yOffset) > canvas.getHeight() / 2.0f) {
+                    robot.mouseMove(centerX, centerY);
+                    return;
+                }
+
+                camera.processMouseMovement(xOffset, yOffset, true);
+
+                robot.mouseMove(centerX, centerY);
             }
         });
 
