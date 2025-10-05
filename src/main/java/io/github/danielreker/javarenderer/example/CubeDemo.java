@@ -124,7 +124,9 @@ public class CubeDemo {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() < keyStates.length) keyStates[e.getKeyCode()] = true;
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) running = false;
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+                }
             }
             @Override
             public void keyReleased(KeyEvent e) {
