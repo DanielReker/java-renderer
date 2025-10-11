@@ -78,6 +78,23 @@ public class Renderer {
             ShaderProgram<V_IO, F_IO> program,
             FrameBuffer targetFrameBuffer
     ) {
+        Vector4f p0_clip = v0_io.gl_Position;
+        Vector4f p1_clip = v1_io.gl_Position;
+        Vector4f p2_clip = v2_io.gl_Position;
+
+
+        final float NEAR_CLIP_PLANE_W = 0.0001f;
+
+        if (p0_clip.w < NEAR_CLIP_PLANE_W && p1_clip.w < NEAR_CLIP_PLANE_W && p2_clip.w < NEAR_CLIP_PLANE_W) {
+            return;
+        }
+
+        if (p0_clip.w < NEAR_CLIP_PLANE_W || p1_clip.w < NEAR_CLIP_PLANE_W || p2_clip.w < NEAR_CLIP_PLANE_W) {
+            // TODO: Implement proper clipping
+            return;
+        }
+
+
         Vector3f p0_ndc = ndcFromClip(v0_io.gl_Position);
         Vector3f p1_ndc = ndcFromClip(v1_io.gl_Position);
         Vector3f p2_ndc = ndcFromClip(v2_io.gl_Position);
