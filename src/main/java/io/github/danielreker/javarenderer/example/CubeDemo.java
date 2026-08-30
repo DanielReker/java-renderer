@@ -28,6 +28,7 @@ public class CubeDemo {
     private static volatile boolean running = true;
 
     private static final Camera camera = new Camera(new Vector3f(0.0f, 0.0f, 3.0f));
+    private static boolean rotating = false;
 
     private static Robot robot;
 
@@ -35,47 +36,47 @@ public class CubeDemo {
     private static long lastFrameTime = System.nanoTime();
 
     private static final List<CubeVertex> cubeVertexData = Arrays.asList(
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
 
-            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(0.0f, 1.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, 0.0f, 1.0f)),
 
-            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(-1.0f, 0.0f, 0.0f)),
 
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
 
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f, -0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f, -0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, -1.0f, 0.0f)),
 
-            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(0.0f, 0.0f)),
-            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f))
+            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
+            new CubeVertex(new Vector3f( 0.5f,  0.5f,  0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f,  0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
+            new CubeVertex(new Vector3f(-0.5f,  0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f))
     );
 
     private static final Vector3f[] cubePositions = {
@@ -88,10 +89,11 @@ public class CubeDemo {
             new Vector3f( 1.3f, -2.0f, -2.5f),
             new Vector3f( 1.5f,  2.0f, -2.5f),
             new Vector3f( 1.5f,  0.2f, -1.5f),
-            new Vector3f(-1.3f,  1.0f, -1.5f)
+            new Vector3f(0.0f,  0.0f, 2.0f)
     };
 
     private static final Vector3f[] cubeChessColors = {
+            new Vector3f( 1.0f,  1.0f, 1.0f),
             new Vector3f( 0.0f,  0.0f,  0.0f),
             new Vector3f( 1.0f,  0.0f, 0.0f),
             new Vector3f( 0.0f,  1.0f, 0.0f),
@@ -100,7 +102,6 @@ public class CubeDemo {
             new Vector3f( 1.0f,  0.0f, 1.0f),
             new Vector3f( 0.0f,  1.0f, 1.0f),
             new Vector3f( 0.5f,  0.5f, 0.5f),
-            new Vector3f( 1.0f,  1.0f, 1.0f),
             new Vector3f( 0.5f,  0.5f, 0.0f)
     };
 
@@ -189,13 +190,22 @@ public class CubeDemo {
                     final Vector3f chessColor = cubeChessColors[i];
 
                     Matrix4f model = new Matrix4f().translate(position);
-                    float angle = (System.nanoTime() / 1_000_000_000.0f) * 0.5f;
-                    if (position.lengthSquared() > 0.1f) {
+                    float angle = rotating ? (System.nanoTime() / 1_000_000_000.0f) * 0.5f : 0.0f;
+                    if (position.lengthSquared() > 0.1f && rotating) {
                         angle += position.x + position.y;
                     }
                     model.rotate(angle, 0.5f, 1.0f, 0.0f);
                     cubeProgram.setUniform("model", model);
+
+                    cubeProgram.setUniform("viewPos", camera.position);
+                    cubeProgram.setUniform("lightPos", new Vector3f(0.0f, 0.0f, 0.0f));
+                    cubeProgram.setUniform("lightColor", new Vector3f(1.0f, 1.0f, 1.0f));
                     cubeProgram.setUniform("chessColor", chessColor);
+
+                    cubeProgram.setUniform("ambientStrength", 0.20f);
+                    cubeProgram.setUniform("diffuseStrength", 0.40f);
+                    cubeProgram.setUniform("specularStrength", 0.85f);
+                    cubeProgram.setUniform("shininess", 128);
 
                     renderer.render(frameBuffer, cubeProgram, cubeVbo, PrimitiveType.TRIANGLES, 0, cubeVbo.getVertexCount());
                 }
@@ -261,6 +271,7 @@ public class CubeDemo {
         if (keyStates[KeyEvent.VK_D]) camera.processMovement(Camera.CameraMovement.RIGHT, deltaTime);
         if (keyStates[KeyEvent.VK_SPACE]) camera.processMovement(Camera.CameraMovement.UP, deltaTime);
         if (keyStates[KeyEvent.VK_SHIFT]) camera.processMovement(Camera.CameraMovement.DOWN, deltaTime);
+        if (keyStates[KeyEvent.VK_R]) rotating = !rotating;
 
         final Point canvasCenterOnScreen = canvas.getLocationOnScreen();
         int centerX = canvasCenterOnScreen.x + canvas.getWidth() / 2;
