@@ -48,6 +48,8 @@ class CubeVertexShader extends AbstractVertexShader<CubeVertexShaderIo> {
 }
 
 class CubeFragmentShaderIo extends FragmentShaderIoBase {
+    @Uniform public Vector3f chessColor;
+
     @Varying public Vector2f varyingTexCoord;
 }
 
@@ -55,13 +57,13 @@ class CubeFragmentShader extends AbstractFragmentShader<CubeFragmentShaderIo> {
     @Override
     public void main(CubeFragmentShaderIo io) {
         float scale = 10.0f;
-        int checkX = (int) Math.floor(io.varyingTexCoord.x * scale);
-        int checkY = (int) Math.floor(io.varyingTexCoord.y * scale);
+        final int checkX = (int) Math.floor(io.varyingTexCoord.x * scale);
+        final int checkY = (int) Math.floor(io.varyingTexCoord.y * scale);
 
         if ((checkX + checkY) % 2 == 0) {
             io.gl_FragColor.set(1.0f, 1.0f, 1.0f, 1.0f);
         } else {
-            io.gl_FragColor.set(0.2f, 0.2f, 0.2f, 1.0f);
+            io.gl_FragColor.set(io.chessColor, 1.0f);
         }
     }
 }

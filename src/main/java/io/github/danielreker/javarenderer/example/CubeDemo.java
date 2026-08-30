@@ -6,7 +6,6 @@ import io.github.danielreker.javarenderer.core.container.RenderBuffer;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
-
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -14,7 +13,10 @@ import org.joml.Vector4f;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
@@ -26,7 +28,6 @@ public class CubeDemo {
     private static volatile boolean running = true;
 
     private static final Camera camera = new Camera(new Vector3f(0.0f, 0.0f, 3.0f));
-    private static boolean firstMouse = true;
 
     private static Robot robot;
 
@@ -90,6 +91,19 @@ public class CubeDemo {
             new Vector3f(-1.3f,  1.0f, -1.5f)
     };
 
+    private static final Vector3f[] cubeChessColors = {
+            new Vector3f( 0.0f,  0.0f,  0.0f),
+            new Vector3f( 1.0f,  0.0f, 0.0f),
+            new Vector3f( 0.0f,  1.0f, 0.0f),
+            new Vector3f( 0.0f,  0.0f, 1.0f),
+            new Vector3f( 1.0f,  1.0f, 0.0f),
+            new Vector3f( 1.0f,  0.0f, 1.0f),
+            new Vector3f( 0.0f,  1.0f, 1.0f),
+            new Vector3f( 0.5f,  0.5f, 0.5f),
+            new Vector3f( 1.0f,  1.0f, 1.0f),
+            new Vector3f( 0.5f,  0.5f, 0.0f)
+    };
+
     private static final boolean[] keyStates = new boolean[256];
 
 
@@ -134,32 +148,6 @@ public class CubeDemo {
             }
         });
 
-        canvas.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override
-            public void mouseMoved(MouseEvent event) {
-                if (firstMouse) {
-                    firstMouse = false;
-                    return;
-                }
-
-                final Point canvasCenterOnScreen = canvas.getLocationOnScreen();
-                int centerX = canvasCenterOnScreen.x + canvas.getWidth() / 2;
-                int centerY = canvasCenterOnScreen.y + canvas.getHeight() / 2;
-
-                float xOffset = event.getXOnScreen() - centerX;
-                float yOffset = centerY - event.getYOnScreen();
-
-                if (Math.abs(xOffset) > canvas.getWidth() / 2.0f || Math.abs(yOffset) > canvas.getHeight() / 2.0f) {
-                    robot.mouseMove(centerX, centerY);
-                    return;
-                }
-
-                camera.processMouseMovement(xOffset, yOffset, true);
-
-                robot.mouseMove(centerX, centerY);
-            }
-        });
-
         canvas.addMouseWheelListener(e -> camera.processMouseScroll(-e.getWheelRotation()));
 
         canvas.requestFocus();
@@ -181,7 +169,7 @@ public class CubeDemo {
                 deltaTime = (currentTime - lastFrameTime) / 1_000_000_000.0f;
                 lastFrameTime = currentTime;
 
-                processInput();
+                processInput(canvas);
 
                 FrameBuffer frameBuffer = FrameBuffer.create(FRAME_WIDTH, FRAME_HEIGHT,
                         new Vector4f(0.1f, 0.1f, 0.1f, 1.0f), 1.0f);
@@ -196,7 +184,10 @@ public class CubeDemo {
                 cubeProgram.setUniform("projection", projection);
                 cubeProgram.setUniform("view", view);
 
-                for (Vector3f position : cubePositions) {
+                for (int i = 0; i < cubePositions.length; i++) {
+                    final Vector3f position = cubePositions[i];
+                    final Vector3f chessColor = cubeChessColors[i];
+
                     Matrix4f model = new Matrix4f().translate(position);
                     float angle = (System.nanoTime() / 1_000_000_000.0f) * 0.5f;
                     if (position.lengthSquared() > 0.1f) {
@@ -204,6 +195,7 @@ public class CubeDemo {
                     }
                     model.rotate(angle, 0.5f, 1.0f, 0.0f);
                     cubeProgram.setUniform("model", model);
+                    cubeProgram.setUniform("chessColor", chessColor);
 
                     renderer.render(frameBuffer, cubeProgram, cubeVbo, PrimitiveType.TRIANGLES, 0, cubeVbo.getVertexCount());
                 }
@@ -262,12 +254,24 @@ public class CubeDemo {
         });
     }
 
-    private static void processInput() {
-        if (keyStates[KeyEvent.VK_W]) camera.processKeyboard(Camera.CameraMovement.FORWARD, deltaTime);
-        if (keyStates[KeyEvent.VK_S]) camera.processKeyboard(Camera.CameraMovement.BACKWARD, deltaTime);
-        if (keyStates[KeyEvent.VK_A]) camera.processKeyboard(Camera.CameraMovement.LEFT, deltaTime);
-        if (keyStates[KeyEvent.VK_D]) camera.processKeyboard(Camera.CameraMovement.RIGHT, deltaTime);
-        if (keyStates[KeyEvent.VK_SPACE]) camera.processKeyboard(Camera.CameraMovement.UP, deltaTime);
-        if (keyStates[KeyEvent.VK_SHIFT]) camera.processKeyboard(Camera.CameraMovement.DOWN, deltaTime);
+    private static void processInput(Canvas canvas) {
+        if (keyStates[KeyEvent.VK_W]) camera.processMovement(Camera.CameraMovement.FORWARD, deltaTime);
+        if (keyStates[KeyEvent.VK_S]) camera.processMovement(Camera.CameraMovement.BACKWARD, deltaTime);
+        if (keyStates[KeyEvent.VK_A]) camera.processMovement(Camera.CameraMovement.LEFT, deltaTime);
+        if (keyStates[KeyEvent.VK_D]) camera.processMovement(Camera.CameraMovement.RIGHT, deltaTime);
+        if (keyStates[KeyEvent.VK_SPACE]) camera.processMovement(Camera.CameraMovement.UP, deltaTime);
+        if (keyStates[KeyEvent.VK_SHIFT]) camera.processMovement(Camera.CameraMovement.DOWN, deltaTime);
+
+        final Point canvasCenterOnScreen = canvas.getLocationOnScreen();
+        int centerX = canvasCenterOnScreen.x + canvas.getWidth() / 2;
+        int centerY = canvasCenterOnScreen.y + canvas.getHeight() / 2;
+
+        Point mousePos = MouseInfo.getPointerInfo().getLocation();
+        float xOffset = mousePos.x - centerX;
+        float yOffset = centerY - mousePos.y;
+
+        camera.processMouseMovement(xOffset, yOffset, true);
+
+        robot.mouseMove(centerX, centerY);
     }
 }

@@ -49,15 +49,11 @@ public class Camera {
         this(position, new Vector3f(0.0f, 1.0f, 0.0f), DEFAULT_YAW, DEFAULT_PITCH);
     }
 
-    public Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) {
-        this(new Vector3f(posX, posY, posZ), new Vector3f(upX, upY, upZ), yaw, pitch);
-    }
-
     public Matrix4f getViewMatrix() {
         return new Matrix4f().lookAt(position, new Vector3f(position).add(front), up);
     }
 
-    public void processKeyboard(CameraMovement direction, float deltaTime) {
+    public void processMovement(CameraMovement direction, float deltaTime) {
         float velocity = movementSpeed * deltaTime;
         Vector3f deltaPos = new Vector3f();
         if (direction == CameraMovement.FORWARD)

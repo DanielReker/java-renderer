@@ -165,23 +165,23 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
             Collection<Field> fields,
             Function<Field, Object> getFieldValue
     ) {
-                fields.forEach(field -> {
-                    field.setAccessible(true);
-                    Object value = getFieldValue.apply(field);
-                    if (value != null) {
-                        if (isCompatibleType(field.getType(), value.getClass())) {
-                            try {
-                                field.set(ioInstance, value);
-                            } catch (IllegalAccessException e) {
-                                System.err.println("Warning: Reflective operation failed: " + e.getMessage());
-                            }
-                        } else {
-                            System.err.println("Warning: Type mismatch for field '" + field.getName() +
-                                    "'. Expected " + field.getType().getSimpleName() +
-                                    ", got " + value.getClass().getSimpleName() + ". Skipping.");
-                        }
+        for (final Field field : fields) {
+            field.setAccessible(true);
+            final Object value = getFieldValue.apply(field);
+            if (value != null) {
+                if (isCompatibleType(field.getType(), value.getClass())) {
+                    try {
+                        field.set(ioInstance, value);
+                    } catch (IllegalAccessException e) {
+                        System.err.println("Warning: Reflective operation failed: " + e.getMessage());
                     }
-                });
+                } else {
+                    System.err.println("Warning: Type mismatch for field '" + field.getName() +
+                            "'. Expected " + field.getType().getSimpleName() +
+                            ", got " + value.getClass().getSimpleName() + ". Skipping.");
+                }
+            }
+        }
     }
 
     private boolean isCompatibleType(Class<?> fieldType, Class<?> valueType) {
@@ -217,8 +217,5 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
     }
 
     public Map<String, Field> getVertexShaderVaryingOutputFields() { return Collections.unmodifiableMap(vertexShaderVaryingOutputFields); }
-    public Map<String, Field> getFragmentShaderVaryingInputFields() { return Collections.unmodifiableMap(fragmentShaderVaryingInputFields); }
 
-    public Class<V_IO> getVertexIoClass() { return vertexIoClass; }
-    public Class<F_IO> getFragmentIoClass() { return fragmentIoClass; }
 }

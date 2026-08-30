@@ -2,15 +2,16 @@ package io.github.danielreker.javarenderer.core;
 
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.RenderBuffer;
-import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
-import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
-import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
-import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
+import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
+import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
+import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
+import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,9 +195,11 @@ public class Renderer {
             float perspectiveCorrection,
             ShaderProgram<V_IO, ?> program
     ) {
-        Map<String, Object> interpolatedVaryings = new HashMap<>();
+        final Map<String, Object> interpolatedVaryings = new HashMap<>();
 
-        program.getVertexShaderVaryingOutputFields().forEach((name, field) -> {
+        for (final Map.Entry<String, Field> entry : program.getVertexShaderVaryingOutputFields().entrySet()) {
+            final String name = entry.getKey();
+            final Field field = entry.getValue();
             try {
                 Object val0 = field.get(v0_io);
                 Object val1 = field.get(v1_io);
@@ -236,7 +239,7 @@ public class Renderer {
             } catch (IllegalAccessException e) {
                 System.err.println("Error interpolating varying " + name + ": " + e.getMessage());
             }
-        });
+        }
         return interpolatedVaryings;
     }
 }
