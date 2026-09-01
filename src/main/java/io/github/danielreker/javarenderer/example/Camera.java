@@ -1,27 +1,22 @@
 package io.github.danielreker.javarenderer.example;
 
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
+import io.github.danielreker.javarenderer.math.Matrix4f;
+import io.github.danielreker.javarenderer.math.Vector3f;
 
 public class Camera {
+
+    public static final float MIN_VERTICAL_FOV_RAD = (float) Math.toRadians(10.0f);
+    public static final float MAX_VERTICAL_FOV_RAD = (float) Math.toRadians(150.0f);
+    public static final float MAX_PITCH_RAD = (float) Math.toRadians(90.0f);
+    public static final float MIN_PITCH_RAD = -MAX_PITCH_RAD;
+    public static final float VERTICAL_FOV_PER_MOUSE_SCROLL = (float) Math.toRadians(2.0f);
+
     public Vector3f position;
-    public Vector3f front;
-    public Vector3f up;
-    public Vector3f right;
-    public Vector3f worldUp;
-
-    public float yaw;
-    public float pitch;
-
+    public float yawRad;
+    public float pitchRad;
+    public float verticalFovRad;
     public float movementSpeed;
-    public float mouseSensitivity;
-    public float zoom;
-
-    private static final float DEFAULT_YAW = -90.0f;
-    private static final float DEFAULT_PITCH = 0.0f;
-    private static final float DEFAULT_SPEED = 2.5f;
-    private static final float DEFAULT_SENSITIVITY = 0.1f;
-    private static final float DEFAULT_ZOOM = 45.0f;
+    public float mouseSensitivityRadPerPoint;
 
     public enum CameraMovement {
         FORWARD,
@@ -32,78 +27,77 @@ public class Camera {
         DOWN
     }
 
-    public Camera(Vector3f position, Vector3f up, float yaw, float pitch) {
-        this.front = new Vector3f(0.0f, 0.0f, -1.0f);
-        this.movementSpeed = DEFAULT_SPEED;
-        this.mouseSensitivity = DEFAULT_SENSITIVITY;
-        this.zoom = DEFAULT_ZOOM;
-
-        this.position = new Vector3f(position);
-        this.worldUp = new Vector3f(up);
-        this.yaw = yaw;
-        this.pitch = pitch;
-        updateCameraVectors();
-    }
-
-    public Camera(Vector3f position) {
-        this(position, new Vector3f(0.0f, 1.0f, 0.0f), DEFAULT_YAW, DEFAULT_PITCH);
+    public Camera(
+            Vector3f position,
+            float yawDeg,
+            float pitchDeg,
+            float verticalFovDeg,
+            float movementSpeed,
+            float mouseSensitivityDegPerPoint
+    ) {
+        this.position = position;
+        this.yawRad = (float) Math.toRadians(yawDeg);
+        this.pitchRad = (float) Math.toRadians(pitchDeg);
+        this.verticalFovRad = (float) Math.toRadians(verticalFovDeg);
+        this.movementSpeed = movementSpeed;
+        this.mouseSensitivityRadPerPoint = (float) Math.toRadians(mouseSensitivityDegPerPoint);
     }
 
     public Matrix4f getViewMatrix() {
-        return new Matrix4f().lookAt(position, new Vector3f(position).add(front), up);
+        final Matrix4f translation = Matrix4f.translation(position.negate());
+        final Matrix4f rotation = Matrix4f.multiply(
+                Matrix4f.rotationAroundX(-pitchRad),
+                Matrix4f.rotationAroundY(-yawRad)
+        );
+        return Matrix4f.multiply(rotation, translation);
     }
 
     public void processMovement(CameraMovement direction, float deltaTime) {
-        float velocity = movementSpeed * deltaTime;
-        Vector3f deltaPos = new Vector3f();
+        float distance = movementSpeed * deltaTime;
+
+        float yawCos = (float) Math.cos(yawRad);
+        float yawSin = (float) Math.sin(yawRad);
+        float pitchCos = (float) Math.cos(pitchRad);
+        float pitchSin = (float) Math.sin(pitchRad);
+
+        Vector3f cameraForward = Vector3f
+                .of(yawSin * pitchCos, pitchSin, -yawCos * pitchCos)
+                .normalize();
+
+        Vector3f worldUp = Vector3f.of(0.0f, 1.0f, 0.0f);
+
+        Vector3f cameraRight = Vector3f
+                .of(yawCos, 0.0f, yawSin)
+                .normalize();
+
+        Vector3f movementDirection = Vector3f.ZERO;
         if (direction == CameraMovement.FORWARD)
-            deltaPos.set(front);
-        if (direction == CameraMovement.BACKWARD)
-            deltaPos.set(front).negate();
-        if (direction == CameraMovement.LEFT)
-            deltaPos.set(right).negate();
-        if (direction == CameraMovement.RIGHT)
-            deltaPos.set(right);
-        if (direction == CameraMovement.UP)
-            deltaPos.set(worldUp);
-        if (direction == CameraMovement.DOWN)
-            deltaPos.set(worldUp).negate();
+            movementDirection = movementDirection.add(cameraForward);
+        else if (direction == CameraMovement.BACKWARD)
+            movementDirection = movementDirection.sub(cameraForward);
+        else if (direction == CameraMovement.LEFT)
+            movementDirection = movementDirection.sub(cameraRight);
+        else if (direction == CameraMovement.RIGHT)
+            movementDirection = movementDirection.add(cameraRight);
+        else if (direction == CameraMovement.UP)
+            movementDirection = movementDirection.add(worldUp);
+        else if (direction == CameraMovement.DOWN)
+            movementDirection = movementDirection.sub(worldUp);
 
-        position.add(deltaPos.mul(velocity));
+        movementDirection = movementDirection.normalize();
+        position = position.add(movementDirection.multiply(distance));
     }
 
-    public void processMouseMovement(float xoffset, float yoffset, boolean constrainPitch) {
-        xoffset *= mouseSensitivity;
-        yoffset *= mouseSensitivity;
+    public void processMouseMovement(float xOffsetPoints, float yOffsetPoints) {
+        yawRad += xOffsetPoints * mouseSensitivityRadPerPoint;
+        pitchRad += yOffsetPoints * mouseSensitivityRadPerPoint;
 
-        yaw += xoffset;
-        pitch += yoffset;
-
-        if (constrainPitch) {
-            if (pitch > 89.0f)
-                pitch = 89.0f;
-            if (pitch < -89.0f)
-                pitch = -89.0f;
-        }
-        updateCameraVectors();
+        pitchRad = Math.clamp(pitchRad, MIN_PITCH_RAD, MAX_PITCH_RAD);
     }
 
-    public void processMouseScroll(float yoffset) {
-        zoom -= yoffset;
-        if (zoom < 1.0f)
-            zoom = 1.0f;
-        if (zoom > 75.0f)
-            zoom = 75.0f;
+    public void processMouseScroll(int wheelOffset) {
+        verticalFovRad -= wheelOffset * VERTICAL_FOV_PER_MOUSE_SCROLL;
+        verticalFovRad = Math.clamp(verticalFovRad, MIN_VERTICAL_FOV_RAD, MAX_VERTICAL_FOV_RAD);
     }
 
-    private void updateCameraVectors() {
-        Vector3f newFront = new Vector3f();
-        newFront.x = (float) (Math.cos(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)));
-        newFront.y = (float) (Math.sin(Math.toRadians(pitch)));
-        newFront.z = (float) (Math.sin(Math.toRadians(yaw)) * Math.cos(Math.toRadians(pitch)));
-        front = newFront.normalize();
-
-        right = new Vector3f(front).cross(worldUp).normalize();
-        up = new Vector3f(right).cross(front).normalize();
-    }
 }

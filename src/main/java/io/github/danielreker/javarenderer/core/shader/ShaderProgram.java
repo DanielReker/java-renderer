@@ -5,7 +5,7 @@ import io.github.danielreker.javarenderer.core.shader.annotations.Uniform;
 import io.github.danielreker.javarenderer.core.shader.annotations.Varying;
 import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
 import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
-import org.joml.Vector4f;
+import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

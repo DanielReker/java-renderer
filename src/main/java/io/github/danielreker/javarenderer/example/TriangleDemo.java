@@ -1,27 +1,29 @@
 package io.github.danielreker.javarenderer.example;
 
-import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
 import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.RenderBuffer;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
-import io.github.danielreker.javarenderer.core.shader.*;
+import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
+import io.github.danielreker.javarenderer.core.shader.AbstractFragmentShader;
+import io.github.danielreker.javarenderer.core.shader.AbstractVertexShader;
+import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
 import io.github.danielreker.javarenderer.core.shader.annotations.Attribute;
 import io.github.danielreker.javarenderer.core.shader.annotations.Uniform;
 import io.github.danielreker.javarenderer.core.shader.annotations.Varying;
 import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
 import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
-
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
-
-import java.awt.image.BufferStrategy;
-import java.util.List;
+import io.github.danielreker.javarenderer.math.Matrix4f;
+import io.github.danielreker.javarenderer.math.Vector3f;
+import io.github.danielreker.javarenderer.math.Vector4f;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.util.List;
+
+import static io.github.danielreker.javarenderer.math.Matrix4f.multiply;
 
 
 class DemoVertex {
@@ -39,15 +41,14 @@ class DemoVertexShaderIo extends VertexShaderIoBase {
     @Attribute public Vector3f position;
     @Attribute public Vector3f color;
 
-    @Varying public Vector3f colorVarying = new Vector3f();
+    @Varying public Vector3f colorVarying;
 }
 
 class DemoVertexShader extends AbstractVertexShader<DemoVertexShaderIo> {
     @Override
     public void main(DemoVertexShaderIo io) {
-        io.gl_Position.set(io.position, 1.0f);
-        io.mvpMatrix.transform(io.gl_Position);
-        io.colorVarying.set(io.color);
+        io.gl_Position = multiply(io.mvpMatrix, io.position.withW(1.0f));
+        io.colorVarying = io.color;
     }
 }
 
@@ -59,8 +60,10 @@ class DemoFragmentShaderIo extends FragmentShaderIoBase {
 class DemoFragmentShader extends AbstractFragmentShader<DemoFragmentShaderIo> {
     @Override
     public void main(DemoFragmentShaderIo io) {
-        io.gl_FragColor.set(io.colorVarying, 1.0f);
-        io.gl_FragColor.mul(io.intensityUniform);
+        io.gl_FragColor = io
+                .colorVarying
+                .withW(1.0f)
+                .multiply(io.intensityUniform);
     }
 }
 
@@ -107,9 +110,10 @@ public class TriangleDemo {
                 ));
 
                 ShaderProgram<DemoVertexShaderIo, DemoFragmentShaderIo> prog = ShaderProgram.create(new DemoVertexShader(), new DemoFragmentShader());
-                Matrix4f modelViewProjection = new Matrix4f()
-                        .rotate(timeElapsed * 1e-9f, 0.0f, 0.0f, 1.0f)
-                        .ortho(-1, 1, -1, 1, -1, 1);
+                Matrix4f modelViewProjection = multiply(
+                        Matrix4f.ortho(-1, 1, -1, 1, -1, 1),
+                        Matrix4f.rotationAroundZ(timeElapsed * 1e-9f)
+                );
                 prog.setUniform("mvpMatrix", modelViewProjection);
                 prog.setUniform("intensityUniform", (float)(Math.sin(timeElapsed * 1e-9f) + 1.0f) / 2.0f);
 
@@ -123,10 +127,10 @@ public class TriangleDemo {
                         Vector4f pixelColorVec = colorBuffer.getValue(x, FRAME_HEIGHT - 1 - y);
 
                         if (pixelColorVec != null) {
-                            int red = (int) (Math.min(Math.max(pixelColorVec.x, 0.0f), 1.0f) * 255.0f);
-                            int green = (int) (Math.min(Math.max(pixelColorVec.y, 0.0f), 1.0f) * 255.0f);
-                            int blue = (int) (Math.min(Math.max(pixelColorVec.z, 0.0f), 1.0f) * 255.0f);
-                            int alpha = (int) (Math.min(Math.max(pixelColorVec.w, 0.0f), 1.0f) * 255.0f);
+                            int red = (int) (Math.min(Math.max(pixelColorVec.x(), 0.0f), 1.0f) * 255.0f);
+                            int green = (int) (Math.min(Math.max(pixelColorVec.y(), 0.0f), 1.0f) * 255.0f);
+                            int blue = (int) (Math.min(Math.max(pixelColorVec.z(), 0.0f), 1.0f) * 255.0f);
+                            int alpha = (int) (Math.min(Math.max(pixelColorVec.w(), 0.0f), 1.0f) * 255.0f);
                             displayImage.setRGB(x, y, (alpha << 24) | (red << 16) | (green << 8) | blue);
                         } else {
                             displayImage.setRGB(x, y, 0xFF000000);

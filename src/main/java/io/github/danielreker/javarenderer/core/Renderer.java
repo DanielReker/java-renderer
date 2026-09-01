@@ -7,9 +7,9 @@ import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
 import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
 import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
-import org.joml.Vector2f;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
+import io.github.danielreker.javarenderer.math.Vector2f;
+import io.github.danielreker.javarenderer.math.Vector3f;
+import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -86,11 +86,11 @@ public class Renderer {
 
         final float NEAR_CLIP_PLANE_W = 0.0001f;
 
-        if (p0_clip.w < NEAR_CLIP_PLANE_W && p1_clip.w < NEAR_CLIP_PLANE_W && p2_clip.w < NEAR_CLIP_PLANE_W) {
+        if (p0_clip.w() < NEAR_CLIP_PLANE_W && p1_clip.w() < NEAR_CLIP_PLANE_W && p2_clip.w() < NEAR_CLIP_PLANE_W) {
             return;
         }
 
-        if (p0_clip.w < NEAR_CLIP_PLANE_W || p1_clip.w < NEAR_CLIP_PLANE_W || p2_clip.w < NEAR_CLIP_PLANE_W) {
+        if (p0_clip.w() < NEAR_CLIP_PLANE_W || p1_clip.w() < NEAR_CLIP_PLANE_W || p2_clip.w() < NEAR_CLIP_PLANE_W) {
             // TODO: Implement proper clipping
             return;
         }
@@ -107,14 +107,14 @@ public class Renderer {
         Vector2f v1_screen = viewportTransform(p1_ndc, viewportWidth, viewportHeight);
         Vector2f v2_screen = viewportTransform(p2_ndc, viewportWidth, viewportHeight);
 
-        float w0_inv = 1.0f / v0_io.gl_Position.w;
-        float w1_inv = 1.0f / v1_io.gl_Position.w;
-        float w2_inv = 1.0f / v2_io.gl_Position.w;
+        float w0_inv = 1.0f / v0_io.gl_Position.w();
+        float w1_inv = 1.0f / v1_io.gl_Position.w();
+        float w2_inv = 1.0f / v2_io.gl_Position.w();
 
-        int minX = (int) Math.floor(Math.min(v0_screen.x, Math.min(v1_screen.x, v2_screen.x)));
-        int maxX = (int) Math.ceil(Math.max(v0_screen.x, Math.max(v1_screen.x, v2_screen.x)));
-        int minY = (int) Math.floor(Math.min(v0_screen.y, Math.min(v1_screen.y, v2_screen.y)));
-        int maxY = (int) Math.ceil(Math.max(v0_screen.y, Math.max(v1_screen.y, v2_screen.y)));
+        int minX = (int) Math.floor(Math.min(v0_screen.x(), Math.min(v1_screen.x(), v2_screen.x())));
+        int maxX = (int) Math.ceil(Math.max(v0_screen.x(), Math.max(v1_screen.x(), v2_screen.x())));
+        int minY = (int) Math.floor(Math.min(v0_screen.y(), Math.min(v1_screen.y(), v2_screen.y())));
+        int maxY = (int) Math.ceil(Math.max(v0_screen.y(), Math.max(v1_screen.y(), v2_screen.y())));
 
         minX = Math.max(0, minX);
         minY = Math.max(0, minY);
@@ -138,9 +138,9 @@ public class Renderer {
                 if (b0 >= 0 && b1 >= 0 && b2 >= 0) {
                     float perspectiveCorrection = 1.0f / (b0 * w0_inv + b1 * w1_inv + b2 * w2_inv);
 
-                    float interpolatedDepthNDC = (b0 * p0_ndc.z * w0_inv +
-                            b1 * p1_ndc.z * w1_inv +
-                            b2 * p2_ndc.z * w2_inv) * perspectiveCorrection;
+                    float interpolatedDepthNDC = (b0 * p0_ndc.z() * w0_inv +
+                            b1 * p1_ndc.z() * w1_inv +
+                            b2 * p2_ndc.z() * w2_inv) * perspectiveCorrection;
 
                     float depthForBuffer = (interpolatedDepthNDC + 1.0f) * 0.5f;
 
@@ -149,7 +149,7 @@ public class Renderer {
                                 interpolateVaryings(v0_io, v1_io, v2_io, b0, b1, b2, w0_inv, w1_inv, w2_inv,
                                         perspectiveCorrection, program);
 
-                        Vector4f fragCoords = new Vector4f(pixelCenter.x, pixelCenter.y, depthForBuffer,
+                        Vector4f fragCoords = new Vector4f(pixelCenter.x(), pixelCenter.y(), depthForBuffer,
                                 1.0f / ( (b0 * w0_inv + b1 * w1_inv + b2 * w2_inv) / perspectiveCorrection)  );
 
                         F_IO fsIo = program.createAndPrepareFragmentIO(interpolatedVaryings, fragCoords);
@@ -173,19 +173,19 @@ public class Renderer {
     }
 
     private Vector3f ndcFromClip(Vector4f clipCoords) {
-        if (clipCoords.w == 0) return new Vector3f(clipCoords.x, clipCoords.y, clipCoords.z);
-        float invW = 1.0f / clipCoords.w;
-        return new Vector3f(clipCoords.x * invW, clipCoords.y * invW, clipCoords.z * invW);
+        if (clipCoords.w() == 0) return new Vector3f(clipCoords.x(), clipCoords.y(), clipCoords.z());
+        float invW = 1.0f / clipCoords.w();
+        return new Vector3f(clipCoords.x() * invW, clipCoords.y() * invW, clipCoords.z() * invW);
     }
 
     private Vector2f viewportTransform(Vector3f ndcCoords, float viewportWidth, float viewportHeight) {
-        float screenX = (ndcCoords.x + 1.0f) * 0.5f * viewportWidth;
-        float screenY = (ndcCoords.y + 1.0f) * 0.5f * viewportHeight;
+        float screenX = (ndcCoords.x() + 1.0f) * 0.5f * viewportWidth;
+        float screenY = (ndcCoords.y() + 1.0f) * 0.5f * viewportHeight;
         return new Vector2f(screenX, screenY);
     }
 
     private float edgeFunction(Vector2f a, Vector2f b, Vector2f p) {
-        return (p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x);
+        return (p.x() - a.x()) * (b.y() - a.y()) - (p.y() - a.y()) * (b.x() - a.x());
     }
 
     private <V_IO extends VertexShaderIoBase> Map<String, Object> interpolateVaryings(
@@ -207,24 +207,27 @@ public class Renderer {
 
                 switch (val0) {
                     case Vector4f vector4f when val1 instanceof Vector4f && val2 instanceof Vector4f -> {
-                        Vector4f v = new Vector4f();
-                        v.x = (b0 * vector4f.x * w0_inv + b1 * ((Vector4f) val1).x * w1_inv + b2 * ((Vector4f) val2).x * w2_inv) * perspectiveCorrection;
-                        v.y = (b0 * vector4f.y * w0_inv + b1 * ((Vector4f) val1).y * w1_inv + b2 * ((Vector4f) val2).y * w2_inv) * perspectiveCorrection;
-                        v.z = (b0 * vector4f.z * w0_inv + b1 * ((Vector4f) val1).z * w1_inv + b2 * ((Vector4f) val2).z * w2_inv) * perspectiveCorrection;
-                        v.w = (b0 * vector4f.w * w0_inv + b1 * ((Vector4f) val1).w * w1_inv + b2 * ((Vector4f) val2).w * w2_inv) * perspectiveCorrection;
+                        Vector4f v = Vector4f.of(
+                                (b0 * vector4f.x() * w0_inv + b1 * ((Vector4f) val1).x() * w1_inv + b2 * ((Vector4f) val2).x() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector4f.y() * w0_inv + b1 * ((Vector4f) val1).y() * w1_inv + b2 * ((Vector4f) val2).y() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector4f.z() * w0_inv + b1 * ((Vector4f) val1).z() * w1_inv + b2 * ((Vector4f) val2).z() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector4f.w() * w0_inv + b1 * ((Vector4f) val1).w() * w1_inv + b2 * ((Vector4f) val2).w() * w2_inv) * perspectiveCorrection
+                        );
                         interpolatedVaryings.put(name, v);
                     }
                     case Vector3f vector3f when val1 instanceof Vector3f && val2 instanceof Vector3f -> {
-                        Vector3f v = new Vector3f();
-                        v.x = (b0 * vector3f.x * w0_inv + b1 * ((Vector3f) val1).x * w1_inv + b2 * ((Vector3f) val2).x * w2_inv) * perspectiveCorrection;
-                        v.y = (b0 * vector3f.y * w0_inv + b1 * ((Vector3f) val1).y * w1_inv + b2 * ((Vector3f) val2).y * w2_inv) * perspectiveCorrection;
-                        v.z = (b0 * vector3f.z * w0_inv + b1 * ((Vector3f) val1).z * w1_inv + b2 * ((Vector3f) val2).z * w2_inv) * perspectiveCorrection;
+                        Vector3f v = Vector3f.of(
+                                (b0 * vector3f.x() * w0_inv + b1 * ((Vector3f) val1).x() * w1_inv + b2 * ((Vector3f) val2).x() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector3f.y() * w0_inv + b1 * ((Vector3f) val1).y() * w1_inv + b2 * ((Vector3f) val2).y() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector3f.z() * w0_inv + b1 * ((Vector3f) val1).z() * w1_inv + b2 * ((Vector3f) val2).z() * w2_inv) * perspectiveCorrection
+                        );
                         interpolatedVaryings.put(name, v);
                     }
                     case Vector2f vector2f when val1 instanceof Vector2f && val2 instanceof Vector2f -> {
-                        Vector2f v = new Vector2f();
-                        v.x = (b0 * vector2f.x * w0_inv + b1 * ((Vector2f) val1).x * w1_inv + b2 * ((Vector2f) val2).x * w2_inv) * perspectiveCorrection;
-                        v.y = (b0 * vector2f.y * w0_inv + b1 * ((Vector2f) val1).y * w1_inv + b2 * ((Vector2f) val2).y * w2_inv) * perspectiveCorrection;
+                        Vector2f v = Vector2f.of(
+                                (b0 * vector2f.x() * w0_inv + b1 * ((Vector2f) val1).x() * w1_inv + b2 * ((Vector2f) val2).x() * w2_inv) * perspectiveCorrection,
+                                (b0 * vector2f.y() * w0_inv + b1 * ((Vector2f) val1).y() * w1_inv + b2 * ((Vector2f) val2).y() * w2_inv) * perspectiveCorrection
+                        );
                         interpolatedVaryings.put(name, v);
                     }
                     case Float v when val1 instanceof Float && val2 instanceof Float -> {

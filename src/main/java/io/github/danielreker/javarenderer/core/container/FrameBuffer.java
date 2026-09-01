@@ -1,6 +1,6 @@
 package io.github.danielreker.javarenderer.core.container;
 
-import org.joml.Vector4f;
+import io.github.danielreker.javarenderer.math.Vector4f;
 
 public final class FrameBuffer {
     private final int width;
@@ -33,12 +33,4 @@ public final class FrameBuffer {
     public RenderBuffer<Vector4f> getColorAttachment() { return colorAttachment; }
     public RenderBuffer<Float> getDepthAttachment() { return depthAttachment; }
 
-    public void clear(Vector4f clearColor, float clearDepth) {
-        if (colorAttachment != null && clearColor != null) {
-            colorAttachment.clear(clearColor);
-        }
-        if (depthAttachment != null) {
-            depthAttachment.clear(clearDepth);
-        }
-    }
 }

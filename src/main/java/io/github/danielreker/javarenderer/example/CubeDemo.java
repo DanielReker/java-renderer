@@ -6,10 +6,10 @@ import io.github.danielreker.javarenderer.core.container.RenderBuffer;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
-import org.joml.Matrix4f;
-import org.joml.Vector2f;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
+import io.github.danielreker.javarenderer.math.Matrix4f;
+import io.github.danielreker.javarenderer.math.Vector2f;
+import io.github.danielreker.javarenderer.math.Vector3f;
+import io.github.danielreker.javarenderer.math.Vector4f;
 
 import javax.swing.*;
 import java.awt.*;
@@ -27,13 +27,16 @@ public class CubeDemo {
     private static final int FRAME_HEIGHT = 600;
     private static volatile boolean running = true;
 
-    private static final Camera camera = new Camera(new Vector3f(0.0f, 0.0f, 3.0f));
-    private static boolean rotating = false;
+    private static final Camera camera = new Camera(
+            Vector3f.of(0.0f, 0.0f, 0.0f),
+            0.0f, 0.0f, 70.0f, 2.5f, 0.1f
+    );
 
     private static Robot robot;
 
     private static float deltaTime = 0.0f;
     private static long lastFrameTime = System.nanoTime();
+    private static boolean rotating = false;
 
     private static final List<CubeVertex> cubeVertexData = Arrays.asList(
             new CubeVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
@@ -175,8 +178,8 @@ public class CubeDemo {
                 FrameBuffer frameBuffer = FrameBuffer.create(FRAME_WIDTH, FRAME_HEIGHT,
                         new Vector4f(0.1f, 0.1f, 0.1f, 1.0f), 1.0f);
 
-                Matrix4f projection = new Matrix4f().perspective(
-                        (float) Math.toRadians(camera.zoom),
+                Matrix4f projection = Matrix4f.perspective(
+                        camera.verticalFovRad,
                         (float) FRAME_WIDTH / FRAME_HEIGHT,
                         0.1f,
                         100.0f);
@@ -189,12 +192,15 @@ public class CubeDemo {
                     final Vector3f position = cubePositions[i];
                     final Vector3f chessColor = cubeChessColors[i];
 
-                    Matrix4f model = new Matrix4f().translate(position);
+                    Matrix4f model = Matrix4f.translation(position);
                     float angle = rotating ? (System.nanoTime() / 1_000_000_000.0f) * 0.5f : 0.0f;
                     if (position.lengthSquared() > 0.1f && rotating) {
-                        angle += position.x + position.y;
+                        angle += position.x() + position.y();
                     }
-                    model.rotate(angle, 0.5f, 1.0f, 0.0f);
+                    model = Matrix4f.multiply(model, Matrix4f.multiply(
+                            Matrix4f.rotationAroundX(angle),
+                            Matrix4f.rotationAroundY(angle / 2)
+                    ));
                     cubeProgram.setUniform("model", model);
 
                     cubeProgram.setUniform("viewPos", camera.position);
@@ -216,10 +222,10 @@ public class CubeDemo {
                     for (int x = 0; x < FRAME_WIDTH; x++) {
                         Vector4f pixelColorVec = colorBuffer.getValue(x, FRAME_HEIGHT - 1 - y);
                         if (pixelColorVec != null) {
-                            int r = (int) (Math.min(Math.max(pixelColorVec.x, 0.0f), 1.0f) * 255);
-                            int g = (int) (Math.min(Math.max(pixelColorVec.y, 0.0f), 1.0f) * 255);
-                            int b = (int) (Math.min(Math.max(pixelColorVec.z, 0.0f), 1.0f) * 255);
-                            int a = (int) (Math.min(Math.max(pixelColorVec.w, 0.0f), 1.0f) * 255);
+                            int r = (int) (Math.min(Math.max(pixelColorVec.x(), 0.0f), 1.0f) * 255);
+                            int g = (int) (Math.min(Math.max(pixelColorVec.y(), 0.0f), 1.0f) * 255);
+                            int b = (int) (Math.min(Math.max(pixelColorVec.z(), 0.0f), 1.0f) * 255);
+                            int a = (int) (Math.min(Math.max(pixelColorVec.w(), 0.0f), 1.0f) * 255);
                             displayImage.setRGB(x, y, (a << 24) | (r << 16) | (g << 8) | b);
                         } else {
                             displayImage.setRGB(x, y, 0xFF000000);
@@ -281,7 +287,7 @@ public class CubeDemo {
         float xOffset = mousePos.x - centerX;
         float yOffset = centerY - mousePos.y;
 
-        camera.processMouseMovement(xOffset, yOffset, true);
+        camera.processMouseMovement(xOffset, yOffset);
 
         robot.mouseMove(centerX, centerY);
     }
