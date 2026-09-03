@@ -5,18 +5,19 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 
 public class Camera {
 
-    public static final float MIN_VERTICAL_FOV_RAD = (float) Math.toRadians(10.0f);
-    public static final float MAX_VERTICAL_FOV_RAD = (float) Math.toRadians(150.0f);
-    public static final float MAX_PITCH_RAD = (float) Math.toRadians(90.0f);
-    public static final float MIN_PITCH_RAD = -MAX_PITCH_RAD;
-    public static final float VERTICAL_FOV_PER_MOUSE_SCROLL = (float) Math.toRadians(2.0f);
+    private static final float MIN_VERTICAL_FOV_RAD = (float) Math.toRadians(10.0f);
+    private static final float MAX_VERTICAL_FOV_RAD = (float) Math.toRadians(150.0f);
+    private static final float MAX_PITCH_RAD = (float) Math.toRadians(90.0f);
+    private static final float MIN_PITCH_RAD = -MAX_PITCH_RAD;
+    private static final float VERTICAL_FOV_PER_MOUSE_SCROLL = (float) Math.toRadians(2.0f);
 
-    public Vector3f position;
-    public float yawRad;
-    public float pitchRad;
-    public float verticalFovRad;
-    public float movementSpeed;
-    public float mouseSensitivityRadPerPoint;
+    private Vector3f position;
+    private float yawRad;
+    private float pitchRad;
+    private float verticalFovRad;
+    private final float movementSpeed;
+    private final float speedUpMultiplier;
+    private final float mouseSensitivity;
 
     public enum CameraMovement {
         FORWARD,
@@ -33,14 +34,16 @@ public class Camera {
             float pitchDeg,
             float verticalFovDeg,
             float movementSpeed,
-            float mouseSensitivityDegPerPoint
+            float speedUpMultiplier,
+            float mouseSensitivity
     ) {
         this.position = position;
         this.yawRad = (float) Math.toRadians(yawDeg);
         this.pitchRad = (float) Math.toRadians(pitchDeg);
         this.verticalFovRad = (float) Math.toRadians(verticalFovDeg);
         this.movementSpeed = movementSpeed;
-        this.mouseSensitivityRadPerPoint = (float) Math.toRadians(mouseSensitivityDegPerPoint);
+        this.speedUpMultiplier = speedUpMultiplier;
+        this.mouseSensitivity = mouseSensitivity;
     }
 
     public Matrix4f getViewMatrix() {
@@ -52,8 +55,24 @@ public class Camera {
         return Matrix4f.multiply(rotation, translation);
     }
 
-    public void processMovement(CameraMovement direction, float deltaTime) {
+    public Vector3f getPosition() {
+        return position;
+    }
+
+    public float getVerticalFovRad() {
+        return verticalFovRad;
+    }
+
+
+    public void processMovement(
+            CameraMovement direction,
+            float deltaTime,
+            boolean speedUp
+    ) {
         float distance = movementSpeed * deltaTime;
+        if (speedUp) {
+            distance *= speedUpMultiplier;
+        }
 
         float yawCos = (float) Math.cos(yawRad);
         float yawSin = (float) Math.sin(yawRad);
@@ -70,27 +89,22 @@ public class Camera {
                 .of(yawCos, 0.0f, yawSin)
                 .normalize();
 
-        Vector3f movementDirection = Vector3f.ZERO;
-        if (direction == CameraMovement.FORWARD)
-            movementDirection = movementDirection.add(cameraForward);
-        else if (direction == CameraMovement.BACKWARD)
-            movementDirection = movementDirection.sub(cameraForward);
-        else if (direction == CameraMovement.LEFT)
-            movementDirection = movementDirection.sub(cameraRight);
-        else if (direction == CameraMovement.RIGHT)
-            movementDirection = movementDirection.add(cameraRight);
-        else if (direction == CameraMovement.UP)
-            movementDirection = movementDirection.add(worldUp);
-        else if (direction == CameraMovement.DOWN)
-            movementDirection = movementDirection.sub(worldUp);
+        Vector3f movementDirection = switch (direction) {
+            case FORWARD -> cameraForward;
+            case BACKWARD -> cameraForward.negate();
+            case LEFT -> cameraRight.negate();
+            case RIGHT -> cameraRight;
+            case UP -> worldUp;
+            case DOWN -> worldUp.negate();
+        };
 
         movementDirection = movementDirection.normalize();
         position = position.add(movementDirection.multiply(distance));
     }
 
     public void processMouseMovement(float xOffsetPoints, float yOffsetPoints) {
-        yawRad += xOffsetPoints * mouseSensitivityRadPerPoint;
-        pitchRad += yOffsetPoints * mouseSensitivityRadPerPoint;
+        yawRad += xOffsetPoints * mouseSensitivity;
+        pitchRad += yOffsetPoints * mouseSensitivity;
 
         pitchRad = Math.clamp(pitchRad, MIN_PITCH_RAD, MAX_PITCH_RAD);
     }
