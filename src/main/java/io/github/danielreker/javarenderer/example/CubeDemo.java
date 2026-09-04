@@ -12,6 +12,7 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class CubeDemo extends Base3dDemo {
@@ -46,7 +47,7 @@ public class CubeDemo extends Base3dDemo {
             new Vector3f(1.0f, 1.0f, 1.0f)
     );
 
-    private boolean rotating = false;
+    private final AtomicBoolean rotating = new AtomicBoolean(false);
 
     public CubeDemo() {
         super(800, 600, "Cube Demo",
@@ -121,8 +122,8 @@ public class CubeDemo extends Base3dDemo {
 
         cubes.forEach(cube -> {
             Matrix4f model = Matrix4f.translation(cube.position);
-            float angle = rotating ? (System.nanoTime() / 1_000_000_000.0f) * 0.5f : 0.0f;
-            if (cube.position.lengthSquared() > 0.1f && rotating) {
+            float angle = rotating.get() ? (System.nanoTime() / 1_000_000_000.0f) * 0.5f : 0.0f;
+            if (cube.position.lengthSquared() > 0.1f && rotating.get()) {
                 angle += cube.position.x() + cube.position.y();
             }
             model = Matrix4f.multiply(model, Matrix4f.multiply(
@@ -151,7 +152,7 @@ public class CubeDemo extends Base3dDemo {
     @Override
     protected void onKeyPressed(int keyCode) {
         if (keyCode == KeyEvent.VK_R) {
-            rotating = !rotating;
+            rotating.set(!rotating.get());
         }
     }
 
