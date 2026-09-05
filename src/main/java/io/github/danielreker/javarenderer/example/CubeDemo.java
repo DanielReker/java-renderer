@@ -12,7 +12,7 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 public class CubeDemo extends Base3dDemo {
@@ -47,11 +47,16 @@ public class CubeDemo extends Base3dDemo {
             new Vector3f(1.0f, 1.0f, 1.0f)
     );
 
-    private final AtomicBoolean rotating = new AtomicBoolean(false);
+    private final AtomicReference<Boolean> cubesRotating =
+            new AtomicReference<>(false);
+
+    private final AtomicReference<Float> cubesRotationTimeSec =
+            new AtomicReference<>(0.0f);
+
 
     public CubeDemo() {
         super(800, 600, "Cube Demo",
-                Vector3f.of(0.1f, 0.1f, 0.1f));
+                Vector3f.of(0.1f, 0.1f, 0.1f), 100.0f);
 
         final List<PhongVertex> cubeVertexData = List.of(
                 new PhongVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
@@ -105,7 +110,6 @@ public class CubeDemo extends Base3dDemo {
 
     @Override
     protected void render(FrameBuffer frameBuffer) {
-
         Matrix4f projection = Matrix4f.perspective(
                 camera.getVerticalFovRad(),
                 (float) frameWidth / frameHeight,
@@ -122,8 +126,8 @@ public class CubeDemo extends Base3dDemo {
 
         cubes.forEach(cube -> {
             Matrix4f model = Matrix4f.translation(cube.position);
-            float angle = rotating.get() ? (System.nanoTime() / 1_000_000_000.0f) * 0.5f : 0.0f;
-            if (cube.position.lengthSquared() > 0.1f && rotating.get()) {
+            float angle = cubesRotationTimeSec.get() * 0.5f;
+            if (cube.position.lengthSquared() > 0.1f) {
                 angle += cube.position.x() + cube.position.y();
             }
             model = Matrix4f.multiply(model, Matrix4f.multiply(
@@ -152,7 +156,17 @@ public class CubeDemo extends Base3dDemo {
     @Override
     protected void onKeyPressed(int keyCode) {
         if (keyCode == KeyEvent.VK_R) {
-            rotating.set(!rotating.get());
+            cubesRotating.updateAndGet(currentRotating -> !currentRotating);
+        } else if (keyCode == KeyEvent.VK_T) {
+            cubesRotationTimeSec.set(0.0f);
+        }
+    }
+
+    @Override
+    protected void processLogic(float deltaTimeSec) {
+        if (cubesRotating.get()) {
+            cubesRotationTimeSec.updateAndGet(current ->
+                    current + deltaTimeSec);
         }
     }
 

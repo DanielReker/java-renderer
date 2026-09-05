@@ -15,6 +15,9 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class Base3dDemo {
@@ -23,9 +26,11 @@ public abstract class Base3dDemo {
     protected final int frameWidth;
     protected final int frameHeight;
     private final Vector3f backgroundColor;
+    private final float logicLoopFrequencyHz;
 
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final ConcurrentHashMap<Integer, Boolean> keyCodeToIsPressed = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService logicScheduler = Executors.newScheduledThreadPool(1);
 
     private JFrame frame;
     private Canvas canvas;
@@ -41,16 +46,25 @@ public abstract class Base3dDemo {
     protected final Renderer renderer = new Renderer();
 
 
-    public Base3dDemo(int frameWidth, int frameHeight, String title, Vector3f backgroundColor) {
+    public Base3dDemo(
+            int frameWidth,
+            int frameHeight,
+            String title,
+            Vector3f backgroundColor,
+            float logicLoopFrequencyHz
+    ) {
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
         this.title = title;
         this.backgroundColor = backgroundColor;
+        this.logicLoopFrequencyHz = logicLoopFrequencyHz;
     }
 
 
     public void run() throws AWTException {
         initializeWindow();
+
+        scheduleLogicUpdates();
 
         Thread renderThread = new Thread(() -> {
             float lastFrameTime = getCurrentTime();
@@ -178,6 +192,11 @@ public abstract class Base3dDemo {
                 running.set(false);
                 try {
                     renderThread.join(1000);
+
+                    logicScheduler.shutdown();
+                    if (!logicScheduler.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+                        logicScheduler.shutdownNow();
+                    }
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 }
@@ -219,6 +238,18 @@ public abstract class Base3dDemo {
 
         robot.mouseMove(centerX, centerY);
     }
+
+    private void scheduleLogicUpdates() {
+        final long intervalMs = Math.round(1000.0f / logicLoopFrequencyHz);
+        final float intervalSec = intervalMs / 1000.0f;
+
+        logicScheduler.scheduleAtFixedRate(
+                () -> processLogic(intervalSec),
+                intervalMs, intervalMs, TimeUnit.MILLISECONDS
+        );
+    }
+
+    protected void processLogic(float deltaTimeSec) { }
 
     private static float getCurrentTime() {
         return System.nanoTime() / 1_000_000_000f;
