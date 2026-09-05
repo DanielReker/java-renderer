@@ -67,21 +67,18 @@ public abstract class Base3dDemo {
         scheduleLogicUpdates();
 
         Thread renderThread = new Thread(() -> {
-            float lastFrameTime = getCurrentTime();
-            float lastFpsCaptureTime = lastFrameTime;
+            float lastFpsCaptureTime = getCurrentTime();
             int frameCounter = 0;
 
             while (running.get()) {
                 float currentTime = getCurrentTime();
-                processInput(canvas, currentTime - lastFrameTime);
-                lastFrameTime = currentTime;
                 float timeFromLastFpsCapture = currentTime - lastFpsCaptureTime;
                 if (timeFromLastFpsCapture >= 1.0f) {
                     final int framesRendered = frameCounter;
                     EventQueue.invokeLater(() ->
                             frame.setTitle(String.format(title + " | FPS: %d", framesRendered)));
                     frameCounter = 0;
-                    lastFpsCaptureTime = getCurrentTime();
+                    lastFpsCaptureTime = currentTime;
                 }
                 frameCounter++;
 
@@ -204,7 +201,7 @@ public abstract class Base3dDemo {
         });
     }
 
-    private void processInput(Canvas canvas, float deltaTime) {
+    private void processInput(float deltaTime) {
         boolean speedUp = keyCodeToIsPressed.getOrDefault(KeyEvent.VK_CONTROL, false);
 
         if (keyCodeToIsPressed.getOrDefault(KeyEvent.VK_W, false)) {
@@ -244,7 +241,10 @@ public abstract class Base3dDemo {
         final float intervalSec = intervalMs / 1000.0f;
 
         logicScheduler.scheduleAtFixedRate(
-                () -> processLogic(intervalSec),
+                () -> {
+                    processInput(intervalSec);
+                    processLogic(intervalSec);
+                },
                 intervalMs, intervalMs, TimeUnit.MILLISECONDS
         );
     }
