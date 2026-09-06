@@ -30,6 +30,10 @@ public record Vector3f(
         return v2;
     }
 
+    public Vector2f xy() {
+        return new Vector2f(v0, v1);
+    }
+
 
     public Vector3f negate() {
         return new Vector3f(-v0, -v1, -v2);
@@ -39,7 +43,7 @@ public record Vector3f(
         return add(this, other);
     }
 
-    public Vector3f sub(Vector3f other) {
+    public Vector3f subtract(Vector3f other) {
         return add(this, other.negate());
     }
 
@@ -53,10 +57,6 @@ public record Vector3f(
 
     public float dot(Vector3f other) {
         return dot(this, other);
-    }
-
-    public Vector3f cross(Vector3f other) {
-        return cross(this, other);
     }
 
     public float lengthSquared() {
@@ -100,16 +100,8 @@ public record Vector3f(
         return lhs.v0 * rhs.v0 + lhs.v1 * rhs.v1 + lhs.v2 * rhs.v2;
     }
 
-    public static Vector3f cross(Vector3f lhs, Vector3f rhs) {
-        return new Vector3f(
-                lhs.v1 * rhs.v2 - lhs.v2 * rhs.v1,
-                lhs.v2 * rhs.v0 - lhs.v0 * rhs.v2,
-                lhs.v0 * rhs.v1 - lhs.v1 * rhs.v0
-        );
-    }
-
     public static Vector3f reflect(Vector3f incident, Vector3f normal) {
-        return incident.sub(normal.multiply(2.0f * normal.dot(incident)));
+        return incident.subtract(normal.multiply(2.0f * normal.dot(incident)));
     }
 
 }

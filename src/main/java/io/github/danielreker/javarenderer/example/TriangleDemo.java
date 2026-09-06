@@ -53,7 +53,7 @@ class DemoVertexShader extends AbstractVertexShader<DemoVertexShaderIo> {
 }
 
 class DemoFragmentShaderIo extends FragmentShaderIoBase {
-    @Uniform public float intensityUniform;
+    @Uniform public Float intensityUniform;
     @Varying public Vector3f colorVarying;
 }
 

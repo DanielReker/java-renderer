@@ -5,7 +5,6 @@ import io.github.danielreker.javarenderer.core.shader.annotations.Uniform;
 import io.github.danielreker.javarenderer.core.shader.annotations.Varying;
 import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
 import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
-import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -55,41 +54,41 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
     }
 
     private void cacheFields() {
-        Arrays.stream(vertexIoClass.getDeclaredFields())
+        Arrays.stream(vertexIoClass.getFields())
                 .filter(f -> f.isAnnotationPresent(Varying.class))
                 .forEach(field -> {
                     field.setAccessible(true);
                     vertexShaderVaryingOutputFields.put(field.getName(), field);
                 });
 
-        Arrays.stream(fragmentIoClass.getDeclaredFields())
+        Arrays.stream(fragmentIoClass.getFields())
                 .filter(f -> f.isAnnotationPresent(Varying.class))
                 .forEach(field -> {
                     field.setAccessible(true);
                     fragmentShaderVaryingInputFields.put(field.getName(), field);
                     if (!vertexShaderVaryingOutputFields.containsKey(field.getName())) {
-                        System.err.println("Warning: Varying input '" + field.getName() +
+                        throw new IllegalStateException("Varying input '" + field.getName() +
                                 "' in fragment shader I/O " + fragmentIoClass.getSimpleName() +
                                 " has no matching varying output in vertex shader I/O " +
                                 vertexIoClass.getSimpleName());
                     }
                 });
 
-        Arrays.stream(fragmentIoClass.getDeclaredFields())
+        Arrays.stream(fragmentIoClass.getFields())
                 .filter(f -> f.isAnnotationPresent(Uniform.class))
                 .forEach(field -> {
                     field.setAccessible(true);
                     fragmentShaderUniformInputFields.put(field.getName(), field);
                 });
 
-        Arrays.stream(vertexIoClass.getDeclaredFields())
+        Arrays.stream(vertexIoClass.getFields())
                 .filter(f -> f.isAnnotationPresent(Uniform.class))
                 .forEach(field -> {
                     field.setAccessible(true);
                     vertexShaderUniformInputFields.put(field.getName(), field);
                 });
 
-        Arrays.stream(vertexIoClass.getDeclaredFields())
+        Arrays.stream(vertexIoClass.getFields())
                 .filter(f -> f.isAnnotationPresent(Attribute.class))
                 .forEach(field -> {
                     field.setAccessible(true);
@@ -151,7 +150,9 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
         }
     }
 
-    public F_IO createAndPrepareFragmentIO(Map<String, Object> interpolatedVaryings, Vector4f fragmentCoordinates) {
+    public F_IO createAndPrepareFragmentIO(
+            Map<String, Object> interpolatedVaryings
+    ) {
         try {
             F_IO fsIo = fragmentIoConstructor.newInstance();
 
@@ -160,9 +161,6 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
             populateFields(fsIo, fragmentShaderUniformInputFields.values(),
                     field -> uniformValues.get(field.getName()));
-
-
-            fsIo.gl_FragCoord = fragmentCoordinates;
 
             return fsIo;
         } catch (ReflectiveOperationException e) {
@@ -180,44 +178,14 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
             field.setAccessible(true);
             final Object value = getFieldValue.apply(field);
             if (value != null) {
-                if (isCompatibleType(field.getType(), value.getClass())) {
-                    try {
-                        field.set(ioInstance, value);
-                    } catch (IllegalAccessException e) {
-                        System.err.println("Warning: Reflective operation failed: " + e.getMessage());
-                    }
-                } else {
-                    System.err.println("Warning: Type mismatch for field '" + field.getName() +
-                            "'. Expected " + field.getType().getSimpleName() +
-                            ", got " + value.getClass().getSimpleName() + ". Skipping.");
+                try {
+                    field.set(ioInstance, value);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException("Failed to populate field " + field.getName(), e);
                 }
             }
         }
     }
-
-    private boolean isCompatibleType(Class<?> fieldType, Class<?> valueType) {
-        if (fieldType.isAssignableFrom(valueType)) return true;
-        if (fieldType.isPrimitive()) {
-            return getWrapperClass(fieldType).isAssignableFrom(valueType);
-        }
-        if (valueType.isPrimitive()) {
-            return fieldType.isAssignableFrom(getWrapperClass(valueType));
-        }
-        return false;
-    }
-
-    private Class<?> getWrapperClass(Class<?> primitiveClass) {
-        if (primitiveClass == int.class) return Integer.class;
-        if (primitiveClass == float.class) return Float.class;
-        if (primitiveClass == boolean.class) return Boolean.class;
-        if (primitiveClass == double.class) return Double.class;
-        if (primitiveClass == char.class) return Character.class;
-        if (primitiveClass == byte.class) return Byte.class;
-        if (primitiveClass == short.class) return Short.class;
-        if (primitiveClass == long.class) return Long.class;
-        return primitiveClass;
-    }
-
 
     public void executeVertexShader(V_IO vsIo) {
         vertexShader.main(vsIo);
@@ -227,6 +195,8 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
         fragmentShader.main(fsIo);
     }
 
-    public Map<String, Field> getVertexShaderVaryingOutputFields() { return Collections.unmodifiableMap(vertexShaderVaryingOutputFields); }
+    public Map<String, Field> getVertexShaderVaryingOutputFields() {
+        return Collections.unmodifiableMap(vertexShaderVaryingOutputFields);
+    }
 
 }

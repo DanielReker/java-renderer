@@ -57,7 +57,7 @@ public class CubeDemo extends Base3dDemo {
 
 
     public CubeDemo() {
-        super(800, 600, "Cube Demo",
+        super(640, 480, "Cube Demo",
                 Vector3f.of(0.1f, 0.1f, 0.1f), 100.0f);
 
         final List<PhongVertex> cubeVertexData = List.of(

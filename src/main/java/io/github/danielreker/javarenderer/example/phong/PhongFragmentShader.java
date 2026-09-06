@@ -26,9 +26,9 @@ public class PhongFragmentShader extends AbstractFragmentShader<PhongFragmentSha
     public void main(Io io) {
         final Vector3f objectColor = io.objectColorTexture.apply(io.varyingTexCoord);
 
-        final Vector3f lightDir = io.lightSource.position().sub(io.varyingFragPos).normalize();
+        final Vector3f lightDir = io.lightSource.position().subtract(io.varyingFragPos).normalize();
         final Vector3f norm = io.varyingNormal.normalize();
-        final Vector3f viewDir = io.viewPos.sub(io.varyingFragPos).normalize();
+        final Vector3f viewDir = io.viewPos.subtract(io.varyingFragPos).normalize();
         final Vector3f reflectDir = Vector3f.reflect(lightDir.negate(), norm);
 
 

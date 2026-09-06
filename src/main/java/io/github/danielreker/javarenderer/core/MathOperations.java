@@ -66,7 +66,7 @@ public final class MathOperations<T> {
         return add.apply(tClass.cast(value1), tClass.cast(value2));
     }
 
-    public T multiply(Object value, float scalar) {
+    public T multiply(Object value, Float scalar) {
         return multiply.apply(tClass.cast(value), scalar);
     }
 

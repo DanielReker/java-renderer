@@ -65,7 +65,7 @@ public class SceneDemo extends Base3dDemo {
 
 
     public SceneDemo() {
-        super(800, 600, ".obj Scene Demo",
+        super(640, 480, ".obj Scene Demo",
                 Vector3f.of(0.1f, 0.1f, 0.1f), 100.0f);
 
         ObjFile sceneObj = ObjParser.parse(SceneDemo.class.getClassLoader()
