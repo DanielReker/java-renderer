@@ -108,6 +108,17 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
     }
 
 
+    public V_IO createAndPrepareVertexIO() {
+        try {
+            V_IO vsIo = vertexIoConstructor.newInstance();
+            populateFields(vsIo, vertexShaderUniformInputFields.values(),
+                    field -> uniformValues.get(field.getName()));
+            return vsIo;
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to instantiate Vertex IO", e);
+        }
+    }
+
     public V_IO createAndPrepareVertexIO(Object vertexObject) {
         try {
             V_IO vsIo = vertexIoConstructor.newInstance();

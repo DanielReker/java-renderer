@@ -12,10 +12,7 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Stream;
 
 public class Renderer {
@@ -66,12 +63,123 @@ public class Renderer {
             FrameBuffer targetFrameBuffer
     ) {
         for (int i = 0; i < allProcessedVertices.size() - 2; i += 3) {
-            V_IO v0_io = allProcessedVertices.get(i);
-            V_IO v1_io = allProcessedVertices.get(i + 1);
-            V_IO v2_io = allProcessedVertices.get(i + 2);
-            rasterizeTriangle(v0_io, v1_io, v2_io, program, targetFrameBuffer);
+            final List<V_IO> clippedVertices =
+                    clipPolygon(program, allProcessedVertices.subList(i, i + 3));
+
+            for (int j = 1; j < clippedVertices.size() - 1; j++) {
+                rasterizeTriangle(
+                        clippedVertices.getFirst(),
+                        clippedVertices.get(j),
+                        clippedVertices.get(j + 1),
+                        program,
+                        targetFrameBuffer
+                );
+            }
         }
     }
+
+    private static final List<Vector4f> CLIPPING_PLANES = List.of(
+            Vector4f.of(1, 0, 0, 1),
+            Vector4f.of(-1, 0, 0, 1),
+            Vector4f.of(0, 1, 0, 1),
+            Vector4f.of(0, -1, 0, 1),
+            Vector4f.of(0, 0, 1, 1),
+            Vector4f.of(0, 0, -1, 1)
+    );
+
+    private <V_IO extends VertexShaderIoBase>
+    List<V_IO> clipPolygon(
+            ShaderProgram<V_IO, ?> program,
+            List<V_IO> polygonVertices
+    ) {
+        for (final Vector4f clippingPlane : CLIPPING_PLANES) {
+            polygonVertices = clipPolygonWithPlane(program, polygonVertices, clippingPlane);
+        }
+        return polygonVertices;
+    }
+
+    private <V_IO extends VertexShaderIoBase>
+    List<V_IO> clipPolygonWithPlane(
+            ShaderProgram<V_IO, ?> program,
+            List<V_IO> polygonVertices,
+            Vector4f plane
+    ) {
+        if (polygonVertices.isEmpty()) {
+            return List.of();
+        }
+
+        final List<V_IO> result = new ArrayList<>();
+
+        V_IO start = polygonVertices.getLast();
+        boolean startInside = isInside(start, plane);
+        for (final V_IO end : polygonVertices) {
+            final boolean endInside = isInside(end, plane);
+
+            if (endInside) {
+                if (!startInside) {
+                    result.add(calculateIntersection(program, start, end, plane));
+                }
+                result.add(end);
+            } else if (startInside) {
+                result.add(calculateIntersection(program, start, end, plane));
+            }
+
+            start = end;
+            startInside = endInside;
+        }
+
+        return result;
+    }
+
+    private <V_IO extends VertexShaderIoBase>
+    boolean isInside(
+            V_IO vertex,
+            Vector4f plane
+    ) {
+        return vertex.gl_Position.dot(plane) >= 0;
+    }
+
+    private <V_IO extends VertexShaderIoBase>
+    V_IO calculateIntersection(
+            ShaderProgram<V_IO, ?> program,
+            V_IO startVertex,
+            V_IO endVertex,
+            Vector4f plane
+    ) {
+        final float dotStart = startVertex.gl_Position.dot(plane);
+        final float dotEnd = endVertex.gl_Position.dot(plane);
+
+        final float t = dotStart / (dotStart - dotEnd);
+
+        V_IO intersection = program.createAndPrepareVertexIO();
+
+        for (final Map.Entry<String, Field> entry : program.getVertexShaderVaryingOutputFields().entrySet()) {
+            final String name = entry.getKey();
+            final Field field = entry.getValue();
+            try {
+                Object startValue = field.get(startVertex);
+                Object endValue = field.get(endVertex);
+
+                MathOperations<?> mathOperations = MathOperations
+                        .forClass(startValue.getClass());
+
+                startValue = mathOperations.multiply(startValue, 1 - t);
+                endValue = mathOperations.multiply(endValue, t);
+
+                Object intersectionValue = mathOperations.add(startValue, endValue);
+
+                field.set(intersection, intersectionValue);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("Error interpolating varying " + name, e);
+            }
+        }
+
+        intersection.gl_Position = startVertex.gl_Position.multiply(1 - t)
+                .add(endVertex.gl_Position.multiply(t));
+
+        return intersection;
+    }
+
 
     private <V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase>
     void rasterizeTriangle(
@@ -79,23 +187,6 @@ public class Renderer {
             ShaderProgram<V_IO, F_IO> program,
             FrameBuffer targetFrameBuffer
     ) {
-        Vector4f p0_clip = v0_io.gl_Position;
-        Vector4f p1_clip = v1_io.gl_Position;
-        Vector4f p2_clip = v2_io.gl_Position;
-
-
-        final float NEAR_CLIP_PLANE_W = 0.0001f;
-
-        if (p0_clip.w() < NEAR_CLIP_PLANE_W && p1_clip.w() < NEAR_CLIP_PLANE_W && p2_clip.w() < NEAR_CLIP_PLANE_W) {
-            return;
-        }
-
-        if (p0_clip.w() < NEAR_CLIP_PLANE_W || p1_clip.w() < NEAR_CLIP_PLANE_W || p2_clip.w() < NEAR_CLIP_PLANE_W) {
-            // TODO: Implement proper clipping
-            return;
-        }
-
-
         Vector3f p0_ndc = ndcFromClip(v0_io.gl_Position);
         Vector3f p1_ndc = ndcFromClip(v1_io.gl_Position);
         Vector3f p2_ndc = ndcFromClip(v2_io.gl_Position);
@@ -205,42 +296,19 @@ public class Renderer {
                 Object val1 = field.get(v1_io);
                 Object val2 = field.get(v2_io);
 
-                switch (val0) {
-                    case Vector4f vector4f when val1 instanceof Vector4f && val2 instanceof Vector4f -> {
-                        Vector4f v = Vector4f.of(
-                                (b0 * vector4f.x() * w0_inv + b1 * ((Vector4f) val1).x() * w1_inv + b2 * ((Vector4f) val2).x() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector4f.y() * w0_inv + b1 * ((Vector4f) val1).y() * w1_inv + b2 * ((Vector4f) val2).y() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector4f.z() * w0_inv + b1 * ((Vector4f) val1).z() * w1_inv + b2 * ((Vector4f) val2).z() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector4f.w() * w0_inv + b1 * ((Vector4f) val1).w() * w1_inv + b2 * ((Vector4f) val2).w() * w2_inv) * perspectiveCorrection
-                        );
-                        interpolatedVaryings.put(name, v);
-                    }
-                    case Vector3f vector3f when val1 instanceof Vector3f && val2 instanceof Vector3f -> {
-                        Vector3f v = Vector3f.of(
-                                (b0 * vector3f.x() * w0_inv + b1 * ((Vector3f) val1).x() * w1_inv + b2 * ((Vector3f) val2).x() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector3f.y() * w0_inv + b1 * ((Vector3f) val1).y() * w1_inv + b2 * ((Vector3f) val2).y() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector3f.z() * w0_inv + b1 * ((Vector3f) val1).z() * w1_inv + b2 * ((Vector3f) val2).z() * w2_inv) * perspectiveCorrection
-                        );
-                        interpolatedVaryings.put(name, v);
-                    }
-                    case Vector2f vector2f when val1 instanceof Vector2f && val2 instanceof Vector2f -> {
-                        Vector2f v = Vector2f.of(
-                                (b0 * vector2f.x() * w0_inv + b1 * ((Vector2f) val1).x() * w1_inv + b2 * ((Vector2f) val2).x() * w2_inv) * perspectiveCorrection,
-                                (b0 * vector2f.y() * w0_inv + b1 * ((Vector2f) val1).y() * w1_inv + b2 * ((Vector2f) val2).y() * w2_inv) * perspectiveCorrection
-                        );
-                        interpolatedVaryings.put(name, v);
-                    }
-                    case Float v when val1 instanceof Float && val2 instanceof Float -> {
-                        float f = (b0 * v * w0_inv + b1 * (Float) val1 * w1_inv + b2 * (Float) val2 * w2_inv) * perspectiveCorrection;
-                        interpolatedVaryings.put(name, f);
-                    }
-                    default -> {
-                        System.err.println("Warning: Varying '" + name + "' of type " + val0.getClass().getSimpleName() + " cannot be interpolated. Using value from first vertex.");
-                        interpolatedVaryings.put(name, val0);
-                    }
-                }
+                MathOperations<?> mathOperations = MathOperations
+                        .forClass(val0.getClass());
+
+                val0 = mathOperations.multiply(val0, b0 * w0_inv);
+                val1 = mathOperations.multiply(val1, b1 * w1_inv);
+                val2 = mathOperations.multiply(val2, b2 * w2_inv);
+
+                Object interpolatedValue = mathOperations.add(val0, mathOperations.add(val1, val2));
+                interpolatedValue = mathOperations.multiply(interpolatedValue, perspectiveCorrection);
+
+                interpolatedVaryings.put(name, interpolatedValue);
             } catch (IllegalAccessException e) {
-                System.err.println("Error interpolating varying " + name + ": " + e.getMessage());
+                throw new RuntimeException("Error interpolating varying " + name, e);
             }
         }
         return interpolatedVaryings;
