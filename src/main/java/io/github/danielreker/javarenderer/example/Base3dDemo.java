@@ -1,6 +1,5 @@
 package io.github.danielreker.javarenderer.example;
 
-import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.RenderBuffer;
 import io.github.danielreker.javarenderer.math.Vector3f;
@@ -42,8 +41,6 @@ public abstract class Base3dDemo {
             Vector3f.ZERO,
             0.0f, 0.0f, 70.0f, 2.5f, 3.0f, 0.0017f
     );
-
-    protected final Renderer renderer = new Renderer();
 
 
     public Base3dDemo(

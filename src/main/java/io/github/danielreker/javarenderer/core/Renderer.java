@@ -12,42 +12,44 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
-public class Renderer {
+public class Renderer<V, V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
 
-    public <V, V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase>
-    void render(
+    private final ShaderProgram<V_IO, F_IO> shaderProgram;
+
+    public Renderer(ShaderProgram<V_IO, F_IO> shaderProgram) {
+        this.shaderProgram = shaderProgram;
+    }
+
+
+    public void render(
             FrameBuffer targetFrameBuffer,
-            ShaderProgram<V_IO, F_IO> program,
             VertexBuffer<V> vbo,
             PrimitiveType mode,
             int first,
             int count
     ) {
-        Objects.requireNonNull(targetFrameBuffer, "Target FrameBuffer cannot be null.");
-        Objects.requireNonNull(program, "ShaderProgram cannot be null.");
-        Objects.requireNonNull(vbo, "VertexBuffer cannot be null.");
-        if (vbo.getVertexCount() == 0) return;
-
-        List<V_IO> processedVertices = processVertices(vbo.streamRange(first, count), program).toList();
+        List<V_IO> processedVertices = processVertices(vbo.streamRange(first, count)).toList();
 
         if (mode == PrimitiveType.TRIANGLES) {
-            assembleAndRasterizeTriangles(processedVertices, program, targetFrameBuffer);
+            assembleAndRasterizeTriangles(processedVertices, targetFrameBuffer);
         } else {
             System.err.println("Warning: PrimitiveType " + mode + " not yet supported. Only TRIANGLES.");
         }
     }
 
-    private <V, V_IO extends VertexShaderIoBase> Stream<V_IO> processVertices(
-            Stream<V> verticesStream,
-            ShaderProgram<V_IO, ?> program
+    private Stream<V_IO> processVertices(
+            Stream<V> verticesStream
     ) {
         return verticesStream.map(vertexObject -> {
-            V_IO vsIo = program.createAndPrepareVertexIO(vertexObject);
+            V_IO vsIo = shaderProgram.createAndPrepareVertexIO(vertexObject);
             if (vsIo != null) {
-                program.executeVertexShader(vsIo);
+                shaderProgram.executeVertexShader(vsIo);
             } else {
                 System.err.println("Warning: Failed to create Vertex I/O Object from Vertex Object "
                         + vertexObject.getClass().getSimpleName());
@@ -56,22 +58,19 @@ public class Renderer {
         });
     }
 
-    private <V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase>
-    void assembleAndRasterizeTriangles(
+    private void assembleAndRasterizeTriangles(
             List<V_IO> allProcessedVertices,
-            ShaderProgram<V_IO, F_IO> program,
             FrameBuffer targetFrameBuffer
     ) {
         for (int i = 0; i < allProcessedVertices.size() - 2; i += 3) {
             final List<V_IO> clippedVertices =
-                    clipPolygon(program, allProcessedVertices.subList(i, i + 3));
+                    clipPolygon(allProcessedVertices.subList(i, i + 3));
 
             for (int j = 1; j < clippedVertices.size() - 1; j++) {
                 rasterizeTriangle(
                         clippedVertices.getFirst(),
                         clippedVertices.get(j),
                         clippedVertices.get(j + 1),
-                        program,
                         targetFrameBuffer
                 );
             }
@@ -87,20 +86,16 @@ public class Renderer {
             Vector4f.of(0, 0, -1, 1)
     );
 
-    private <V_IO extends VertexShaderIoBase>
-    List<V_IO> clipPolygon(
-            ShaderProgram<V_IO, ?> program,
+    private List<V_IO> clipPolygon(
             List<V_IO> polygonVertices
     ) {
         for (final Vector4f clippingPlane : CLIPPING_PLANES) {
-            polygonVertices = clipPolygonWithPlane(program, polygonVertices, clippingPlane);
+            polygonVertices = clipPolygonWithPlane(polygonVertices, clippingPlane);
         }
         return polygonVertices;
     }
 
-    private <V_IO extends VertexShaderIoBase>
-    List<V_IO> clipPolygonWithPlane(
-            ShaderProgram<V_IO, ?> program,
+    private List<V_IO> clipPolygonWithPlane(
             List<V_IO> polygonVertices,
             Vector4f plane
     ) {
@@ -117,11 +112,11 @@ public class Renderer {
 
             if (endInside) {
                 if (!startInside) {
-                    result.add(calculateIntersection(program, start, end, plane));
+                    result.add(calculateIntersection(start, end, plane));
                 }
                 result.add(end);
             } else if (startInside) {
-                result.add(calculateIntersection(program, start, end, plane));
+                result.add(calculateIntersection(start, end, plane));
             }
 
             start = end;
@@ -131,17 +126,14 @@ public class Renderer {
         return result;
     }
 
-    private <V_IO extends VertexShaderIoBase>
-    boolean isInside(
+    private boolean isInside(
             V_IO vertex,
             Vector4f plane
     ) {
         return vertex.gl_Position.dot(plane) >= 0;
     }
 
-    private <V_IO extends VertexShaderIoBase>
-    V_IO calculateIntersection(
-            ShaderProgram<V_IO, ?> program,
+    private V_IO calculateIntersection(
             V_IO startVertex,
             V_IO endVertex,
             Vector4f plane
@@ -151,9 +143,9 @@ public class Renderer {
 
         final float t = dotStart / (dotStart - dotEnd);
 
-        V_IO intersection = program.createAndPrepareVertexIO();
+        V_IO intersection = shaderProgram.createAndPrepareVertexIO();
 
-        for (final Map.Entry<String, Field> entry : program.getVertexShaderVaryingOutputFields().entrySet()) {
+        for (final Map.Entry<String, Field> entry : shaderProgram.getVertexShaderVaryingOutputFields().entrySet()) {
             final String name = entry.getKey();
             final Field field = entry.getValue();
             try {
@@ -181,10 +173,8 @@ public class Renderer {
     }
 
 
-    private <V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase>
-    void rasterizeTriangle(
+    private void rasterizeTriangle(
             V_IO v0_io, V_IO v1_io, V_IO v2_io,
-            ShaderProgram<V_IO, F_IO> program,
             FrameBuffer targetFrameBuffer
     ) {
         Vector3f p0_ndc = ndcFromClip(v0_io.gl_Position);
@@ -238,14 +228,14 @@ public class Renderer {
                     if (depthBuffer == null || depthForBuffer < depthBuffer.getValue(x, y)) {
                         Map<String, Object> interpolatedVaryings =
                                 interpolateVaryings(v0_io, v1_io, v2_io, b0, b1, b2, w0_inv, w1_inv, w2_inv,
-                                        perspectiveCorrection, program);
+                                        perspectiveCorrection);
 
                         Vector4f fragCoords = new Vector4f(pixelCenter.x(), pixelCenter.y(), depthForBuffer,
                                 1.0f / ( (b0 * w0_inv + b1 * w1_inv + b2 * w2_inv) / perspectiveCorrection)  );
 
-                        F_IO fsIo = program.createAndPrepareFragmentIO(interpolatedVaryings, fragCoords);
+                        F_IO fsIo = shaderProgram.createAndPrepareFragmentIO(interpolatedVaryings, fragCoords);
                         if (fsIo != null) {
-                            program.executeFragmentShader(fsIo);
+                            shaderProgram.executeFragmentShader(fsIo);
 
                             if (!fsIo.discarded) {
                                 if (colorBuffer != null) {
@@ -279,16 +269,16 @@ public class Renderer {
         return (p.x() - a.x()) * (b.y() - a.y()) - (p.y() - a.y()) * (b.x() - a.x());
     }
 
-    private <V_IO extends VertexShaderIoBase> Map<String, Object> interpolateVaryings(
+    private Map<String, Object> interpolateVaryings(
             V_IO v0_io, V_IO v1_io, V_IO v2_io,
             float b0, float b1, float b2,
             float w0_inv, float w1_inv, float w2_inv,
-            float perspectiveCorrection,
-            ShaderProgram<V_IO, ?> program
+            float perspectiveCorrection
     ) {
         final Map<String, Object> interpolatedVaryings = new HashMap<>();
 
-        for (final Map.Entry<String, Field> entry : program.getVertexShaderVaryingOutputFields().entrySet()) {
+        for (final Map.Entry<String, Field> entry : shaderProgram
+                .getVertexShaderVaryingOutputFields().entrySet()) {
             final String name = entry.getKey();
             final Field field = entry.getValue();
             try {

@@ -90,13 +90,16 @@ public class TriangleDemo {
         canvas.createBufferStrategy(2);
         BufferStrategy bufferStrategy = canvas.getBufferStrategy();
 
-        Renderer renderer = new Renderer();
         BufferedImage displayImage = new BufferedImage(FRAME_WIDTH, FRAME_HEIGHT, BufferedImage.TYPE_INT_ARGB);
 
         Thread renderThread = new Thread(() -> {
             long startTimeSec = System.nanoTime();
             long frameCount = 0;
             long lastFpsTime = System.nanoTime();
+
+            ShaderProgram<DemoVertexShaderIo, DemoFragmentShaderIo> prog = ShaderProgram
+                    .create(new DemoVertexShader(), new DemoFragmentShader());
+            Renderer<DemoVertex, DemoVertexShaderIo, DemoFragmentShaderIo> renderer = new Renderer<>(prog);
 
             while (running) {
                 long nowSec = System.nanoTime();
@@ -109,7 +112,7 @@ public class TriangleDemo {
                         new DemoVertex(new Vector3f( 0.0f,  0.5f, 0.0f), new Vector3f(0.0f, 0.0f, 1.0f))
                 ));
 
-                ShaderProgram<DemoVertexShaderIo, DemoFragmentShaderIo> prog = ShaderProgram.create(new DemoVertexShader(), new DemoFragmentShader());
+
                 Matrix4f modelViewProjection = multiply(
                         Matrix4f.ortho(-1, 1, -1, 1, -1, 1),
                         Matrix4f.rotationAroundZ(timeElapsed * 1e-9f)
@@ -119,7 +122,7 @@ public class TriangleDemo {
 
 
                 FrameBuffer myCanvasFrameBuffer = FrameBuffer.create(FRAME_WIDTH, FRAME_HEIGHT, new Vector4f(0.1f, 0.1f, 0.1f, 1f), 1.0f);
-                renderer.render(myCanvasFrameBuffer, prog, vbo, PrimitiveType.TRIANGLES, 0, 3);
+                renderer.render(myCanvasFrameBuffer, vbo, PrimitiveType.TRIANGLES, 0, 3);
 
                 RenderBuffer<Vector4f> colorBuffer = myCanvasFrameBuffer.getColorAttachment();
                 for (int y = 0; y < FRAME_HEIGHT; y++) {

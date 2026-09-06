@@ -1,5 +1,6 @@
 package io.github.danielreker.javarenderer.example;
 
+import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
@@ -35,6 +36,7 @@ public class SceneDemo extends Base3dDemo {
     private final List<SceneObject> sceneObjects;
 
     private final ShaderProgram<PhongVertexShader.Io, PhongFragmentShader.Io> shaderProgram;
+    private final Renderer<PhongVertex, PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
 
 
     private static final VertexBuffer<PhongVertex> LIGHT_SOURCE_VBO =
@@ -92,6 +94,8 @@ public class SceneDemo extends Base3dDemo {
                 new PhongVertexShader(),
                 new PhongFragmentShader()
         );
+
+        renderer = new Renderer<>(shaderProgram);
     }
 
     private static VertexBuffer<PhongVertex> buildVboFromObjObject(
@@ -193,7 +197,7 @@ public class SceneDemo extends Base3dDemo {
             shaderProgram.setUniform("objectColorTexture", objectColorTexture);
 
             renderer.render(
-                    frameBuffer, shaderProgram, sceneObject.vbo, PrimitiveType.TRIANGLES,
+                    frameBuffer, sceneObject.vbo, PrimitiveType.TRIANGLES,
                     0, sceneObject.vbo.getVertexCount()
             );
         });
@@ -205,7 +209,7 @@ public class SceneDemo extends Base3dDemo {
         shaderProgram.setUniform("objectColorTexture", lightSourceTexture);
 
         renderer.render(
-                frameBuffer, shaderProgram, LIGHT_SOURCE_VBO, PrimitiveType.TRIANGLES,
+                frameBuffer, LIGHT_SOURCE_VBO, PrimitiveType.TRIANGLES,
                 0, LIGHT_SOURCE_VBO.getVertexCount()
         );
     }

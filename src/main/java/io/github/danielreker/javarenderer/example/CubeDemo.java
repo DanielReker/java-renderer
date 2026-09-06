@@ -1,5 +1,6 @@
 package io.github.danielreker.javarenderer.example;
 
+import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
@@ -37,6 +38,7 @@ public class CubeDemo extends Base3dDemo {
 
     private final VertexBuffer<PhongVertex> cubeVbo;
     private final ShaderProgram<PhongVertexShader.Io, PhongFragmentShader.Io> cubeProgram;
+    private final Renderer<PhongVertex, PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
 
     private final PhongMaterial cubeMaterial = new PhongMaterial(
             0.20f, 0.40f, 0.85f, 128
@@ -106,6 +108,7 @@ public class CubeDemo extends Base3dDemo {
                 new PhongVertexShader(),
                 new PhongFragmentShader()
         );
+        renderer = new Renderer<>(cubeProgram);
     }
 
     @Override
@@ -149,7 +152,7 @@ public class CubeDemo extends Base3dDemo {
             };
             cubeProgram.setUniform("objectColorTexture", objectColorTexture);
 
-            renderer.render(frameBuffer, cubeProgram, cubeVbo, PrimitiveType.TRIANGLES, 0, cubeVbo.getVertexCount());
+            renderer.render(frameBuffer, cubeVbo, PrimitiveType.TRIANGLES, 0, cubeVbo.getVertexCount());
         });
     }
 
