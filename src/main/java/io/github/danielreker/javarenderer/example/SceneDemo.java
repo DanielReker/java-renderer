@@ -75,18 +75,18 @@ public class SceneDemo extends Base3dDemo {
         sceneObjects = List.of(
                 new SceneObject(
                         buildVboFromObjObject(sceneObj.getObject("Solid").orElseThrow()),
-                        new Vector3f(1.0f, 0.0f, 0.0f),
-                        new PhongMaterial(0.20f, 0.40f, 0.85f, 128)
+                        new Vector3f(0.8f, 0.05f, 0.05f),
+                        new PhongMaterial(0.15f, 0.55f, 0.5f, 64)
                 ),
                 new SceneObject(
                         buildVboFromObjObject(sceneObj.getObject("Конус").orElseThrow()),
-                        new Vector3f(0.0f, 1.0f, 0.0f),
-                        new PhongMaterial(0.20f, 0.40f, 0.85f, 128)
+                        new Vector3f(1.0f, 0.766f, 0.336f),
+                        new PhongMaterial(0.1f, 0.1f, 0.95f, 128)
                 ),
                 new SceneObject(
                         buildVboFromObjObject(sceneObj.getObject("Cube").orElseThrow()),
-                        new Vector3f(0.0f, 0.0f, 1.0f),
-                        new PhongMaterial(0.20f, 0.40f, 0.85f, 128)
+                        new Vector3f(0.9f, 0.9f, 0.9f),
+                        new PhongMaterial(0.1f, 0.8f, 0.0f, 1)
                 )
         );
 
