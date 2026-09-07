@@ -1,9 +1,8 @@
 package io.github.danielreker.javarenderer.example;
 
-import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
-import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
+import io.github.danielreker.javarenderer.core.rendering.Renderer;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
 import io.github.danielreker.javarenderer.example.phong.*;
 import io.github.danielreker.javarenderer.math.Matrix4f;
@@ -28,7 +27,7 @@ import static io.github.danielreker.javarenderer.math.Constants.PI_F;
 public class SceneDemo extends Base3dDemo {
 
     record SceneObject(
-            VertexBuffer<PhongVertex> vbo,
+            List<PhongVertex> vbo,
             Vector3f color,
             PhongMaterial material
     ) {}
@@ -36,10 +35,10 @@ public class SceneDemo extends Base3dDemo {
     private final List<SceneObject> sceneObjects;
 
     private final ShaderProgram<PhongVertexShader.Io, PhongFragmentShader.Io> shaderProgram;
-    private final Renderer<PhongVertex, PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
+    private final Renderer<PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
 
 
-    private static final VertexBuffer<PhongVertex> LIGHT_SOURCE_VBO =
+    private static final List<PhongVertex> LIGHT_SOURCE_VBO =
             generateSphereVbo(0.3f, 18, 18);
 
     public static final Vector3f LIGHT_SOURCE_INITIAL_POSITION = Vector3f.of(4.0f, 3.0f, 0.0f);
@@ -98,10 +97,10 @@ public class SceneDemo extends Base3dDemo {
         renderer = new Renderer<>(shaderProgram);
     }
 
-    private static VertexBuffer<PhongVertex> buildVboFromObjObject(
+    private static List<PhongVertex> buildVboFromObjObject(
             ObjObject objObject
     ) {
-        List<PhongVertex> vertices = objObject
+        return objObject
                 .faces()
                 .stream()
                 .flatMap(face -> Stream
@@ -112,12 +111,10 @@ public class SceneDemo extends Base3dDemo {
                         objVertex.normal()
                 ))
                 .toList();
-
-        return VertexBuffer.create(vertices);
     }
 
     @SuppressWarnings("SameParameterValue")
-    private static VertexBuffer<PhongVertex> generateSphereVbo(
+    private static List<PhongVertex> generateSphereVbo(
             float radius,
             int uSegments,
             int vSegments
@@ -162,7 +159,7 @@ public class SceneDemo extends Base3dDemo {
             }
         }
 
-        return VertexBuffer.create(vboVertices);
+        return vboVertices;
     }
 
     @Override
@@ -197,8 +194,7 @@ public class SceneDemo extends Base3dDemo {
             shaderProgram.setUniform("objectColorTexture", objectColorTexture);
 
             renderer.render(
-                    frameBuffer, sceneObject.vbo, PrimitiveType.TRIANGLES,
-                    0, sceneObject.vbo.getVertexCount()
+                    frameBuffer, sceneObject.vbo, PrimitiveType.TRIANGLES
             );
         });
 
@@ -209,8 +205,7 @@ public class SceneDemo extends Base3dDemo {
         shaderProgram.setUniform("objectColorTexture", lightSourceTexture);
 
         renderer.render(
-                frameBuffer, LIGHT_SOURCE_VBO, PrimitiveType.TRIANGLES,
-                0, LIGHT_SOURCE_VBO.getVertexCount()
+                frameBuffer, LIGHT_SOURCE_VBO, PrimitiveType.TRIANGLES
         );
     }
 

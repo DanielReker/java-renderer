@@ -1,9 +1,8 @@
 package io.github.danielreker.javarenderer.example;
 
-import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
-import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
+import io.github.danielreker.javarenderer.core.rendering.Renderer;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
 import io.github.danielreker.javarenderer.example.phong.*;
 import io.github.danielreker.javarenderer.math.Matrix4f;
@@ -36,9 +35,9 @@ public class CubeDemo extends Base3dDemo {
             new CubeObject(new Vector3f(0.0f,  0.0f, 2.0f), new Vector3f( 0.5f,  0.5f, 0.0f))
     );
 
-    private final VertexBuffer<PhongVertex> cubeVbo;
+    private final List<PhongVertex> cubeVbo;
     private final ShaderProgram<PhongVertexShader.Io, PhongFragmentShader.Io> cubeProgram;
-    private final Renderer<PhongVertex, PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
+    private final Renderer<PhongVertexShader.Io, PhongFragmentShader.Io> renderer;
 
     private final PhongMaterial cubeMaterial = new PhongMaterial(
             0.20f, 0.40f, 0.85f, 128
@@ -60,7 +59,7 @@ public class CubeDemo extends Base3dDemo {
         super(640, 480, "Cube Demo",
                 Vector3f.of(0.1f, 0.1f, 0.1f), 100.0f);
 
-        final List<PhongVertex> cubeVertexData = List.of(
+        cubeVbo = List.of(
                 new PhongVertex(new Vector3f(-0.5f, -0.5f, -0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
                 new PhongVertex(new Vector3f(0.5f, -0.5f, -0.5f), new Vector2f(1.0f, 0.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
                 new PhongVertex(new Vector3f(0.5f, 0.5f, -0.5f), new Vector2f(1.0f, 1.0f), new Vector3f(0.0f, 0.0f, -1.0f)),
@@ -103,7 +102,6 @@ public class CubeDemo extends Base3dDemo {
                 new PhongVertex(new Vector3f(-0.5f, 0.5f, 0.5f), new Vector2f(0.0f, 0.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
                 new PhongVertex(new Vector3f(-0.5f, 0.5f, -0.5f), new Vector2f(0.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f))
         );
-        cubeVbo = VertexBuffer.create(cubeVertexData);
         cubeProgram = ShaderProgram.create(
                 new PhongVertexShader(),
                 new PhongFragmentShader()
@@ -152,7 +150,7 @@ public class CubeDemo extends Base3dDemo {
             };
             cubeProgram.setUniform("objectColorTexture", objectColorTexture);
 
-            renderer.render(frameBuffer, cubeVbo, PrimitiveType.TRIANGLES, 0, cubeVbo.getVertexCount());
+            renderer.render(frameBuffer, cubeVbo, PrimitiveType.TRIANGLES);
         });
     }
 

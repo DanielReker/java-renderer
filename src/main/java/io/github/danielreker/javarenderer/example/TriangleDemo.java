@@ -1,10 +1,9 @@
 package io.github.danielreker.javarenderer.example;
 
-import io.github.danielreker.javarenderer.core.Renderer;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
 import io.github.danielreker.javarenderer.core.container.RenderBuffer;
-import io.github.danielreker.javarenderer.core.container.VertexBuffer;
 import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
+import io.github.danielreker.javarenderer.core.rendering.Renderer;
 import io.github.danielreker.javarenderer.core.shader.AbstractFragmentShader;
 import io.github.danielreker.javarenderer.core.shader.AbstractVertexShader;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
@@ -99,19 +98,17 @@ public class TriangleDemo {
 
             ShaderProgram<DemoVertexShaderIo, DemoFragmentShaderIo> prog = ShaderProgram
                     .create(new DemoVertexShader(), new DemoFragmentShader());
-            Renderer<DemoVertex, DemoVertexShaderIo, DemoFragmentShaderIo> renderer = new Renderer<>(prog);
+            Renderer<DemoVertexShaderIo, DemoFragmentShaderIo> renderer = new Renderer<>(prog);
 
             while (running) {
                 long nowSec = System.nanoTime();
                 float timeElapsed = (float)(nowSec - startTimeSec);
 
-
-                VertexBuffer<DemoVertex> vbo = VertexBuffer.create(List.of(
+                List<DemoVertex> vbo = List.of(
                         new DemoVertex(new Vector3f(0.5f, -0.5f, 0.0f), new Vector3f(1.0f, 0.0f, 0.0f)),
                         new DemoVertex(new Vector3f(-0.5f, -0.5f, 0.0f), new Vector3f(0.0f, 1.0f, 0.0f)),
                         new DemoVertex(new Vector3f( 0.0f,  0.5f, 0.0f), new Vector3f(0.0f, 0.0f, 1.0f))
-                ));
-
+                );
 
                 Matrix4f modelViewProjection = multiply(
                         Matrix4f.ortho(-1, 1, -1, 1, -1, 1),
@@ -122,7 +119,7 @@ public class TriangleDemo {
 
 
                 FrameBuffer myCanvasFrameBuffer = FrameBuffer.create(FRAME_WIDTH, FRAME_HEIGHT, new Vector4f(0.1f, 0.1f, 0.1f, 1f), 1.0f);
-                renderer.render(myCanvasFrameBuffer, vbo, PrimitiveType.TRIANGLES, 0, 3);
+                renderer.render(myCanvasFrameBuffer, vbo, PrimitiveType.TRIANGLES);
 
                 RenderBuffer<Vector4f> colorBuffer = myCanvasFrameBuffer.getColorAttachment();
                 for (int y = 0; y < FRAME_HEIGHT; y++) {

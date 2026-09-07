@@ -1,8 +1,7 @@
-package io.github.danielreker.javarenderer.core;
+package io.github.danielreker.javarenderer.core.rendering;
 
+import io.github.danielreker.javarenderer.core.MathOperations;
 import io.github.danielreker.javarenderer.core.container.FrameBuffer;
-import io.github.danielreker.javarenderer.core.container.VertexBuffer;
-import io.github.danielreker.javarenderer.core.enums.PrimitiveType;
 import io.github.danielreker.javarenderer.core.shader.ShaderProgram;
 import io.github.danielreker.javarenderer.core.shader.io.FragmentShaderIoBase;
 import io.github.danielreker.javarenderer.core.shader.io.VertexShaderIoBase;
@@ -11,157 +10,21 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import io.github.danielreker.javarenderer.math.Vector4f;
 
 import java.lang.reflect.Field;
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-public class Renderer<V, V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
+public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
 
     private final ShaderProgram<V_IO, F_IO> shaderProgram;
 
-    public Renderer(ShaderProgram<V_IO, F_IO> shaderProgram) {
+
+    public TriangleRasterizer(ShaderProgram<V_IO, F_IO> shaderProgram) {
         this.shaderProgram = shaderProgram;
     }
 
 
-    public void render(
-            FrameBuffer targetFrameBuffer,
-            VertexBuffer<V> vbo,
-            PrimitiveType mode,
-            int first,
-            int count
-    ) {
-        List<V_IO> processedVertices = processVertices(vbo.streamRange(first, count)).toList();
-
-        if (mode == PrimitiveType.TRIANGLES) {
-            assembleAndRasterizeTriangles(processedVertices, targetFrameBuffer);
-        } else {
-            System.err.println("Warning: PrimitiveType " + mode + " not yet supported. Only TRIANGLES.");
-        }
-    }
-
-    private Stream<V_IO> processVertices(
-            Stream<V> verticesStream
-    ) {
-        return verticesStream.map(vertexObject -> {
-            V_IO vsIo = shaderProgram.createAndPrepareVertexIO(vertexObject);
-            shaderProgram.executeVertexShader(vsIo);
-            return vsIo;
-        });
-    }
-
-    private void assembleAndRasterizeTriangles(
-            List<V_IO> allProcessedVertices,
-            FrameBuffer targetFrameBuffer
-    ) {
-        for (int i = 0; i < allProcessedVertices.size() - 2; i += 3) {
-            final List<V_IO> clippedVertices =
-                    clipPolygon(allProcessedVertices.subList(i, i + 3));
-
-            for (int j = 1; j < clippedVertices.size() - 1; j++) {
-                rasterizeTriangle(
-                        clippedVertices.getFirst(),
-                        clippedVertices.get(j),
-                        clippedVertices.get(j + 1),
-                        targetFrameBuffer
-                );
-            }
-        }
-    }
-
-    private static final List<Vector4f> CLIPPING_PLANES = List.of(
-            Vector4f.of(1, 0, 0, 1),
-            Vector4f.of(-1, 0, 0, 1),
-            Vector4f.of(0, 1, 0, 1),
-            Vector4f.of(0, -1, 0, 1),
-            Vector4f.of(0, 0, 1, 1),
-            Vector4f.of(0, 0, -1, 1)
-    );
-
-    private List<V_IO> clipPolygon(
-            List<V_IO> polygonVertices
-    ) {
-        for (final Vector4f clippingPlane : CLIPPING_PLANES) {
-            polygonVertices = clipPolygonWithPlane(polygonVertices, clippingPlane);
-        }
-        return polygonVertices;
-    }
-
-    private List<V_IO> clipPolygonWithPlane(
-            List<V_IO> polygonVertices,
-            Vector4f plane
-    ) {
-        if (polygonVertices.isEmpty()) {
-            return List.of();
-        }
-
-        final List<V_IO> result = new ArrayList<>();
-
-        V_IO start = polygonVertices.getLast();
-        boolean startInside = isInside(start, plane);
-        for (final V_IO end : polygonVertices) {
-            final boolean endInside = isInside(end, plane);
-
-            if (endInside) {
-                if (!startInside) {
-                    result.add(calculateIntersection(start, end, plane));
-                }
-                result.add(end);
-            } else if (startInside) {
-                result.add(calculateIntersection(start, end, plane));
-            }
-
-            start = end;
-            startInside = endInside;
-        }
-
-        return result;
-    }
-
-    private boolean isInside(
-            V_IO vertex,
-            Vector4f plane
-    ) {
-        return vertex.gl_Position.dot(plane) >= 0;
-    }
-
-    private V_IO calculateIntersection(
-            V_IO startVertex,
-            V_IO endVertex,
-            Vector4f plane
-    ) {
-        final float dotStart = startVertex.gl_Position.dot(plane);
-        final float dotEnd = endVertex.gl_Position.dot(plane);
-
-        final float t = dotStart / (dotStart - dotEnd);
-
-        V_IO intersection = shaderProgram.createAndPrepareVertexIO();
-
-        for (final Map.Entry<String, Field> entry : shaderProgram.getVertexShaderVaryingOutputFields().entrySet()) {
-            final String name = entry.getKey();
-            final Field field = entry.getValue();
-            try {
-                Object startValue = field.get(startVertex);
-                Object endValue = field.get(endVertex);
-
-                MathOperations<?> mathOperations = MathOperations
-                        .forClass(startValue.getClass());
-
-                startValue = mathOperations.multiply(startValue, 1 - t);
-                endValue = mathOperations.multiply(endValue, t);
-
-                Object intersectionValue = mathOperations.add(startValue, endValue);
-
-                field.set(intersection, intersectionValue);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("Error interpolating varying " + name, e);
-            }
-        }
-
-        return intersection;
-    }
-
-
-    private void rasterizeTriangle(
+    public void rasterize(
             V_IO v0Io, V_IO v1Io, V_IO v2Io,
             FrameBuffer targetFrameBuffer
     ) {
@@ -301,4 +164,5 @@ public class Renderer<V, V_IO extends VertexShaderIoBase, F_IO extends FragmentS
         }
         return interpolatedVaryings;
     }
+
 }
