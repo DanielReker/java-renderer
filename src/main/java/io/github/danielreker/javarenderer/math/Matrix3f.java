@@ -6,12 +6,6 @@ public record Matrix3f(
         float m20, float m21, float m22
 ) {
 
-    public static final Matrix3f IDENTITY = new Matrix3f(
-            1.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 1.0f
-    );
-
     public static Vector3f multiply(Matrix3f matrix3f, Vector3f vector3f) {
         return new Vector3f(
                 matrix3f.m00 * vector3f.v0() + matrix3f.m01 * vector3f.v1() + matrix3f.m02 * vector3f.v2(),

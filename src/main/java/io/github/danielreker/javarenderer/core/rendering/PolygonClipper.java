@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class PolygonClipper<V_IO extends VertexShaderIoBase> {
+public class PolygonClipper<VS_IO extends VertexShaderIoBase> {
 
     private static final List<Vector4f> CLIPPING_PLANES = List.of(
             Vector4f.of(1, 0, 0, 1),
@@ -21,16 +21,16 @@ public class PolygonClipper<V_IO extends VertexShaderIoBase> {
             Vector4f.of(0, 0, -1, 1)
     );
 
-    private final ShaderProgram<V_IO, ?> shaderProgram;
+    private final ShaderProgram<VS_IO, ?> shaderProgram;
 
 
-    public PolygonClipper(ShaderProgram<V_IO, ?> shaderProgram) {
+    public PolygonClipper(ShaderProgram<VS_IO, ?> shaderProgram) {
         this.shaderProgram = shaderProgram;
     }
 
 
-    public List<V_IO> clip(
-            List<V_IO> polygonVertices
+    public List<VS_IO> clip(
+            List<VS_IO> polygonVertices
     ) {
         for (final Vector4f clippingPlane : CLIPPING_PLANES) {
             polygonVertices = clipWithPlane(polygonVertices, clippingPlane);
@@ -38,19 +38,19 @@ public class PolygonClipper<V_IO extends VertexShaderIoBase> {
         return polygonVertices;
     }
 
-    private List<V_IO> clipWithPlane(
-            List<V_IO> polygonVertices,
+    private List<VS_IO> clipWithPlane(
+            List<VS_IO> polygonVertices,
             Vector4f plane
     ) {
         if (polygonVertices.isEmpty()) {
             return List.of();
         }
 
-        final List<V_IO> result = new ArrayList<>();
+        final List<VS_IO> result = new ArrayList<>();
 
-        V_IO start = polygonVertices.getLast();
+        VS_IO start = polygonVertices.getLast();
         boolean startInside = isInside(start, plane);
-        for (final V_IO end : polygonVertices) {
+        for (final VS_IO end : polygonVertices) {
             final boolean endInside = isInside(end, plane);
 
             if (endInside) {
@@ -70,23 +70,23 @@ public class PolygonClipper<V_IO extends VertexShaderIoBase> {
     }
 
     private boolean isInside(
-            V_IO vertex,
+            VS_IO vertex,
             Vector4f plane
     ) {
-        return vertex.gl_Position.dot(plane) >= 0;
+        return vertex.glPosition.dot(plane) >= 0;
     }
 
-    private V_IO calculateIntersection(
-            V_IO startVertex,
-            V_IO endVertex,
+    private VS_IO calculateIntersection(
+            VS_IO startVertex,
+            VS_IO endVertex,
             Vector4f plane
     ) {
-        final float dotStart = startVertex.gl_Position.dot(plane);
-        final float dotEnd = endVertex.gl_Position.dot(plane);
+        final float dotStart = startVertex.glPosition.dot(plane);
+        final float dotEnd = endVertex.glPosition.dot(plane);
 
         final float t = dotStart / (dotStart - dotEnd);
 
-        V_IO intersection = shaderProgram.createAndPrepareVertexIO();
+        VS_IO intersection = shaderProgram.createAndPrepareVertexIO();
 
         for (final Map.Entry<String, Field> entry : shaderProgram.getVertexShaderVaryingOutputFields().entrySet()) {
             final String name = entry.getKey();

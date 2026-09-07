@@ -46,7 +46,7 @@ class DemoVertexShaderIo extends VertexShaderIoBase {
 class DemoVertexShader extends AbstractVertexShader<DemoVertexShaderIo> {
     @Override
     public void main(DemoVertexShaderIo io) {
-        io.gl_Position = multiply(io.mvpMatrix, io.position.withW(1.0f));
+        io.glPosition = multiply(io.mvpMatrix, io.position.withW(1.0f));
         io.colorVarying = io.color;
     }
 }
@@ -59,7 +59,7 @@ class DemoFragmentShaderIo extends FragmentShaderIoBase {
 class DemoFragmentShader extends AbstractFragmentShader<DemoFragmentShaderIo> {
     @Override
     public void main(DemoFragmentShaderIo io) {
-        io.gl_FragColor = io
+        io.glFragColor = io
                 .colorVarying
                 .withW(1.0f)
                 .multiply(io.intensityUniform);

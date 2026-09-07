@@ -15,6 +15,7 @@ public class Camera {
     private float yawRad;
     private float pitchRad;
     private float verticalFovRad;
+
     private final float movementSpeed;
     private final float speedUpMultiplier;
     private final float mouseSensitivity;

@@ -43,7 +43,7 @@ public class PhongFragmentShader extends AbstractFragmentShader<PhongFragmentSha
         Vector3f specular = io.lightSource.color().multiply(io.material.specularStrength() * spec);
 
 
-        io.gl_FragColor = ambient.add(diffuse).add(specular)
+        io.glFragColor = ambient.add(diffuse).add(specular)
                 .multiply(objectColor)
                 .withW(1.0f);
     }

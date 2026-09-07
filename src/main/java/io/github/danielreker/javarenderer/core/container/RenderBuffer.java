@@ -4,22 +4,16 @@ public class RenderBuffer<T> {
     private final int width;
     private final int height;
     private final T[][] data;
-    private final Class<T> dataType;
 
     @SuppressWarnings("unchecked")
-    public RenderBuffer(int width, int height, Class<T> dataType, T initialValue) {
+    public RenderBuffer(int width, int height, T initialValue) {
         this.width = width;
         this.height = height;
-        this.dataType = dataType;
         this.data = (T[][]) new Object[height][width];
         if (initialValue != null) {
             clear(initialValue);
         }
     }
-
-    public int getWidth() { return width; }
-    public int getHeight() { return height; }
-    public Class<T> getDataType() { return dataType; }
 
     public void setValue(int x, int y, T value) {
         if (0 <= x && x < width && 0 <= y && y < height) {

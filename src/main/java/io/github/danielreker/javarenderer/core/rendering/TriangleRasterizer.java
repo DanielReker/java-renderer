@@ -12,25 +12,24 @@ import io.github.danielreker.javarenderer.math.Vector4f;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
-public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
+public class TriangleRasterizer<VS_IO extends VertexShaderIoBase, FS_IO extends FragmentShaderIoBase> {
 
-    private final ShaderProgram<V_IO, F_IO> shaderProgram;
+    private final ShaderProgram<VS_IO, FS_IO> shaderProgram;
 
 
-    public TriangleRasterizer(ShaderProgram<V_IO, F_IO> shaderProgram) {
+    public TriangleRasterizer(ShaderProgram<VS_IO, FS_IO> shaderProgram) {
         this.shaderProgram = shaderProgram;
     }
 
 
     public void rasterize(
-            V_IO v0Io, V_IO v1Io, V_IO v2Io,
+            VS_IO v0Io, VS_IO v1Io, VS_IO v2Io,
             FrameBuffer targetFrameBuffer
     ) {
-        Vector3f v0Ndc = clipToNdc(v0Io.gl_Position);
-        Vector3f v1Ndc = clipToNdc(v1Io.gl_Position);
-        Vector3f v2Ndc = clipToNdc(v2Io.gl_Position);
+        Vector3f v0Ndc = clipToNdc(v0Io.glPosition);
+        Vector3f v1Ndc = clipToNdc(v1Io.glPosition);
+        Vector3f v2Ndc = clipToNdc(v2Io.glPosition);
 
         Vector2f viewportSize = Vector2f.of(
                 targetFrameBuffer.getWidth(),
@@ -42,9 +41,9 @@ public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends Fr
         Vector2f v2Screen = ndcToScreen(v2Ndc, viewportSize);
 
         Vector3f wClipInv = Vector3f.of(
-                1.0f / v0Io.gl_Position.w(),
-                1.0f / v1Io.gl_Position.w(),
-                1.0f / v2Io.gl_Position.w()
+                1.0f / v0Io.glPosition.w(),
+                1.0f / v1Io.glPosition.w(),
+                1.0f / v2Io.glPosition.w()
         );
 
         int minX = (int) Math.floor(Math.min(v0Screen.x(), Math.min(v1Screen.x(), v2Screen.x())));
@@ -83,7 +82,7 @@ public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends Fr
                         v0Io, v1Io, v2Io, perspectiveCorrectBarycentric
                 );
 
-                F_IO fsIo = shaderProgram.createAndPrepareFragmentIO(interpolatedVaryings);
+                FS_IO fsIo = shaderProgram.createAndPrepareFragmentIO(interpolatedVaryings);
 
                 float zFragNdc = Vector3f.of(
                         v0Ndc.z(), v1Ndc.z(), v2Ndc.z()
@@ -91,7 +90,7 @@ public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends Fr
 
                 float depth = (zFragNdc + 1.0f) * 0.5f;
 
-                fsIo.gl_FragCoord = Vector4f.of(
+                fsIo.glFragCoord = Vector4f.of(
                         pixelCenter.x(),
                         pixelCenter.y(),
                         depth,
@@ -102,12 +101,10 @@ public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends Fr
 
                 if (fsIo.discarded) continue;
 
-                float finalDepth = Optional
-                        .ofNullable(fsIo.gl_FragDepth)
-                        .orElse(depth);
+                float finalDepth = fsIo.glFragDepth == null ? depth : fsIo.glFragDepth;
 
                 if (finalDepth < targetFrameBuffer.getDepthAttachment().getValue(x, y)) {
-                    targetFrameBuffer.getColorAttachment().setValue(x, y, fsIo.gl_FragColor);
+                    targetFrameBuffer.getColorAttachment().setValue(x, y, fsIo.glFragColor);
                     targetFrameBuffer.getDepthAttachment().setValue(x, y, finalDepth);
                 }
             }
@@ -134,7 +131,7 @@ public class TriangleRasterizer<V_IO extends VertexShaderIoBase, F_IO extends Fr
     }
 
     private Map<String, Object> interpolateVaryings(
-            V_IO v0_io, V_IO v1_io, V_IO v2_io,
+            VS_IO v0_io, VS_IO v1_io, VS_IO v2_io,
             Vector3f perspectiveCorrectBarycentric
     ) {
         final Map<String, Object> interpolatedVaryings = new HashMap<>();

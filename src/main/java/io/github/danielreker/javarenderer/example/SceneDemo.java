@@ -70,7 +70,6 @@ public class SceneDemo extends Base3dDemo {
         ObjFile sceneObj = ObjParser.parse(SceneDemo.class.getClassLoader()
                 .getResourceAsStream("demo/scene.obj"));
 
-
         sceneObjects = List.of(
                 new SceneObject(
                         buildVboFromObjObject(sceneObj.getObject("Solid").orElseThrow()),
@@ -213,7 +212,6 @@ public class SceneDemo extends Base3dDemo {
             float scale,
             Vector3f evenColor,
             Vector3f oddColor
-
     ) {
         return texCoord -> {
             final int checkX = (int) Math.floor(texCoord.x() * scale);

@@ -30,7 +30,7 @@ public class PhongVertexShader extends AbstractVertexShader<PhongVertexShader.Io
     public void main(Io io) {
         io.varyingFragPos = Matrix4f.multiply(io.model, io.aPosition.withW(1.0f)).xyz();
         io.varyingNormal = Matrix3f.multiply(io.model.invert().orElseThrow().transpose().mat3(), io.aNormal);
-        io.gl_Position = Matrix4f.multiply(io.projection, Matrix4f.multiply(io.view, io.varyingFragPos.withW(1.0f)));
+        io.glPosition = Matrix4f.multiply(io.projection, Matrix4f.multiply(io.view, io.varyingFragPos.withW(1.0f)));
         io.varyingTexCoord = io.aTexCoord;
     }
 

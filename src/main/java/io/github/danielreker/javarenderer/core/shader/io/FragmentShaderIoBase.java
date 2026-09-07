@@ -5,10 +5,12 @@ import io.github.danielreker.javarenderer.math.Vector3f;
 import io.github.danielreker.javarenderer.math.Vector4f;
 
 public abstract class FragmentShaderIoBase {
-    @BuiltIn public Vector4f gl_FragCoord;
 
-    public Vector4f gl_FragColor = Vector3f.ZERO.withW(1.0f);
-    public Float gl_FragDepth = null;
+    @BuiltIn
+    public Vector4f glFragCoord;
+
+    public Vector4f glFragColor = Vector3f.ZERO.withW(1.0f);
+    public Float glFragDepth = null;
     public Boolean discarded = false;
 
 }

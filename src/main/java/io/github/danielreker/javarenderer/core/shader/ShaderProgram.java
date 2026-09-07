@@ -12,15 +12,15 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.function.Function;
 
-public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase> {
+public class ShaderProgram<VS_IO extends VertexShaderIoBase, FS_IO extends FragmentShaderIoBase> {
 
-    private final AbstractVertexShader<V_IO> vertexShader;
-    private final Class<V_IO> vertexIoClass;
-    private final Constructor<V_IO> vertexIoConstructor;
+    private final AbstractVertexShader<VS_IO> vertexShader;
+    private final Class<VS_IO> vertexIoClass;
+    private final Constructor<VS_IO> vertexIoConstructor;
 
-    private final AbstractFragmentShader<F_IO> fragmentShader;
-    private final Class<F_IO> fragmentIoClass;
-    private final Constructor<F_IO> fragmentIoConstructor;
+    private final AbstractFragmentShader<FS_IO> fragmentShader;
+    private final Class<FS_IO> fragmentIoClass;
+    private final Constructor<FS_IO> fragmentIoConstructor;
 
     private final Map<String, Object> uniformValues = new HashMap<>();
 
@@ -32,13 +32,13 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
 
     @SuppressWarnings("unchecked")
-    private ShaderProgram(AbstractVertexShader<V_IO> vs, AbstractFragmentShader<F_IO> fs) {
+    private ShaderProgram(AbstractVertexShader<VS_IO> vs, AbstractFragmentShader<FS_IO> fs) {
         this.vertexShader = Objects.requireNonNull(vs, "Vertex shader cannot be null");
         this.fragmentShader = Objects.requireNonNull(fs, "Fragment shader cannot be null");
 
-        this.vertexIoClass = (Class<V_IO>)
+        this.vertexIoClass = (Class<VS_IO>)
                 ((ParameterizedType) vs.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
-        this.fragmentIoClass = (Class<F_IO>)
+        this.fragmentIoClass = (Class<FS_IO>)
                 ((ParameterizedType) fs.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
 
         try {
@@ -97,8 +97,8 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
     }
 
 
-    public static <V_IO extends VertexShaderIoBase, F_IO extends FragmentShaderIoBase>
-    ShaderProgram<V_IO, F_IO> create(AbstractVertexShader<V_IO> vs, AbstractFragmentShader<F_IO> fs) {
+    public static <VS_IO extends VertexShaderIoBase, FS_IO extends FragmentShaderIoBase>
+    ShaderProgram<VS_IO, FS_IO> create(AbstractVertexShader<VS_IO> vs, AbstractFragmentShader<FS_IO> fs) {
         return new ShaderProgram<>(vs, fs);
     }
 
@@ -107,36 +107,30 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
     }
 
 
-    public V_IO createAndPrepareVertexIO() {
+    public VS_IO createAndPrepareVertexIO() {
         try {
-            V_IO vsIo = vertexIoConstructor.newInstance();
+            VS_IO vsIo = vertexIoConstructor.newInstance();
             populateFields(vsIo, vertexShaderUniformInputFields.values(),
                     field -> uniformValues.get(field.getName()));
             return vsIo;
         } catch (ReflectiveOperationException e) {
-            throw new RuntimeException("Failed to instantiate Vertex IO", e);
+            throw new RuntimeException("Failed to create Vertex IO", e);
         }
     }
 
-    public V_IO createAndPrepareVertexIO(Object vertexObject) {
+    public VS_IO createAndPrepareVertexIO(Object vertexObject) {
         try {
-            V_IO vsIo = vertexIoConstructor.newInstance();
+            VS_IO vsIo = vertexIoConstructor.newInstance();
 
             populateFields(vsIo, vertexShaderAttributeInputFields.values(),
                     field -> {
                         try {
-                            Field sourceField = vertexObject.getClass().getDeclaredField(field.getName());
+                            Field sourceField = vertexObject.getClass()
+                                    .getDeclaredField(field.getName());
                             sourceField.setAccessible(true);
                             return sourceField.get(vertexObject);
-                        } catch (NoSuchFieldException e) {
-                            System.err.println("Warning: Attribute '" + field.getName()
-                                    + "' not found in vertex object " + vertexObject.getClass().getSimpleName());
-                            return null;
-                        } catch (IllegalAccessException e) {
-                            System.err.println("Warning: Failed to get '" + field.getName()
-                                    + "' value via reflection from vertex object"
-                                    + vertexObject.getClass().getSimpleName());
-                            return null;
+                        } catch (ReflectiveOperationException e) {
+                            throw new RuntimeException("Failed to get field value", e);
                         }
                     });
 
@@ -145,16 +139,15 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
             return vsIo;
         } catch (ReflectiveOperationException e) {
-            System.err.println("Warning: Reflective operation failed: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Failed to create Vertex IO", e);
         }
     }
 
-    public F_IO createAndPrepareFragmentIO(
+    public FS_IO createAndPrepareFragmentIO(
             Map<String, Object> interpolatedVaryings
     ) {
         try {
-            F_IO fsIo = fragmentIoConstructor.newInstance();
+            FS_IO fsIo = fragmentIoConstructor.newInstance();
 
             populateFields(fsIo, fragmentShaderVaryingInputFields.values(),
                     field -> interpolatedVaryings.get(field.getName()));
@@ -164,8 +157,7 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
 
             return fsIo;
         } catch (ReflectiveOperationException e) {
-            System.err.println("Warning: Reflective operation failed: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Failed to create Fragment IO", e);
         }
     }
 
@@ -187,11 +179,11 @@ public class ShaderProgram<V_IO extends VertexShaderIoBase, F_IO extends Fragmen
         }
     }
 
-    public void executeVertexShader(V_IO vsIo) {
+    public void executeVertexShader(VS_IO vsIo) {
         vertexShader.main(vsIo);
     }
 
-    public void executeFragmentShader(F_IO fsIo) {
+    public void executeFragmentShader(FS_IO fsIo) {
         fragmentShader.main(fsIo);
     }
 

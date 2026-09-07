@@ -10,8 +10,8 @@ public final class FrameBuffer {
     private final RenderBuffer<Float> depthAttachment;
 
     public static FrameBuffer create(int width, int height, Vector4f clearColor, float clearDepth) {
-        RenderBuffer<Vector4f> color = new RenderBuffer<>(width, height, Vector4f.class, clearColor);
-        RenderBuffer<Float> depth = new RenderBuffer<>(width, height, Float.class, clearDepth);
+        RenderBuffer<Vector4f> color = new RenderBuffer<>(width, height, clearColor);
+        RenderBuffer<Float> depth = new RenderBuffer<>(width, height, clearDepth);
         return new FrameBuffer(width, height, color, depth);
     }
 
